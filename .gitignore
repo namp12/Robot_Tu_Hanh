@@ -1,0 +1,70 @@
+# --- IDEs and Editor Files ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+
+# --- PlatformIO and Embedded Build Files ---
+.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+*.hex
+*.bin
+*.elf
+*.o
+*.a
+
+# --- OS temporary files ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# --- Python build/env files ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Environment Variables and Secrets ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.pub
+*secret*
+*credential*
+credentials.json
+token.json
+passwd
+password.txt
+
+# --- Database & Logs ---
+*.log
+*.sqlite
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# --- Temporary/Output directories ---
+tmp/
+temp/
+out/
+build/
+dist/
