@@ -15,6 +15,7 @@
 // =============================================================================
 // CẤU HÌNH PHẦN CỨNG - PIN ASSIGNMENTS
 // =============================================================================
+#include "PinMap.h"
 #ifndef MH_FMD_PIN
 #define MH_FMD_PIN 41   ///< Chân kết nối còi Active Buzzer MH-FMD
 #endif

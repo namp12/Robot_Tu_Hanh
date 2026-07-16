@@ -30,4 +30,13 @@
 #define ENC_RR_A      35
 #define ENC_RR_B      36
 
+//================ HC-SR04 =================
+#define HC_FRONT_TRIG 12
+#define HC_FRONT_ECHO 13
+#define HC_REAR_TRIG  14
+#define HC_REAR_ECHO  15
+
+//================ BUZZER ==================
+#define MH_FMD_PIN    21
+
 #endif // PIN_MAP_H
