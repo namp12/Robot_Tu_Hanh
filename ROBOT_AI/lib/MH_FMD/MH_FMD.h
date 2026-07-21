@@ -49,9 +49,8 @@ void MH_FMD_Init();
  * @brief Cập nhật trạng thái còi dựa trên khoảng cách.
  * Tính toán chế độ còi, xử lý override từ Beep hoặc Test, và đổi trạng thái pin không block.
  * @param front Khoảng cách cảm biến trước (cm)
- * @param rear Khoảng cách cảm biến sau (cm)
  */
-void MH_FMD_Update(float front, float rear);
+void MH_FMD_Update(float front);
 
 /**
  * @brief Bật còi thủ công (Kêu liên tục). Override khoảng cách tạm thời.

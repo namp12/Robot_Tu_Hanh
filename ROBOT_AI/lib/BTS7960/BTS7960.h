@@ -46,6 +46,20 @@ public:
 
   int  getSpeed()    const;
   bool isEnabled()   const;
+  uint8_t getRpwmChannel() const {
+#if !defined(ESP_ARDUINO_VERSION_MAJOR) || ESP_ARDUINO_VERSION_MAJOR < 3
+    return _rpwmChannel;
+#else
+    return _rpwmPin;
+#endif
+  }
+  uint8_t getLpwmChannel() const {
+#if !defined(ESP_ARDUINO_VERSION_MAJOR) || ESP_ARDUINO_VERSION_MAJOR < 3
+    return _lpwmChannel;
+#else
+    return _lpwmPin;
+#endif
+  }
 };
 
 #endif // BTS7960_H

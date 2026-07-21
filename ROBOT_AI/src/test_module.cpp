@@ -48,9 +48,6 @@ static void printSensorTestHelp() {
     Serial.println(F("🔍 CẤU HÌNH KIỂM TRA CẢM BIẾN SIÊU ÂM HC-SR04"));
     Serial.println(F("============================================================="));
     Serial.println(F(" Gõ các lệnh chẩn đoán sau rồi nhấn Enter:"));
-    Serial.println(F("   0             -> Cấu hình quét đo luân phiên cả 2 cảm biến"));
-    Serial.println(F("   1             -> Chỉ đo cảm biến TRƯỚC (Front)"));
-    Serial.println(F("   2             -> Chỉ đo cảm biến SAU (Rear)"));
     Serial.println(F("   pause         -> Tạm dừng cập nhật (tránh trôi log khi bị lỗi Echo LOW)"));
     Serial.println(F("   resume        -> Tiếp tục cập nhật khoảng cách cảm biến"));
     Serial.println(F("   print         -> Gọi HC_SR04_Print() in báo cáo chi tiết"));
@@ -206,6 +203,7 @@ void test_module_Update() {
 static void processMainCommand(String cmd) {
     String origCmd = cmd;
     cmd.trim();
+    if (cmd.length() == 0) return;
     cmd.toLowerCase();
 
     // 1. Phân tích tham số của lệnh
@@ -332,13 +330,7 @@ static void processMainCommand(String cmd) {
 
         // --- SUBMENU: Test Cảm biến HC-SR04 ---
         if (activeTestModule == TEST_SENSOR_HC_SR04) {
-            if (action == "0" || action == "alt") {
-                HC_SR04_TestMode(0);
-            } else if (action == "1" || action == "front") {
-                HC_SR04_TestMode(1);
-            } else if (action == "2" || action == "rear") {
-                HC_SR04_TestMode(2);
-            } else if (action == "pause") {
+            if (action == "pause") {
                 runSensorUpdate = false;
                 HC_SR04_SetDebug(false); // Tạm dừng thì tắt luôn debug log
                 Serial.println(F("⏸️ [Sensor] Đã TẠM DỪNG tự động cập nhật cảm biến (Ngưng ngập lụt Log)"));
@@ -473,6 +465,9 @@ void printStatus() {
     Serial.println(F("--------------------------------------------------------------------------------"));
     Serial.print(F("[Mode] "));
     Serial.print(currentMode == MODE_AUTO ? F("AUTO (TỰ ĐỘNG TRÁNH VẬT CẢN)") : F("MANUAL (THỦ CÔNG)"));
+    if (currentMode == MODE_AUTO) {
+        Serial.printf(" [%s]", auto_run_GetStateName(currentAutoState));
+    }
     Serial.print(F(" | Active Dir: "));
     Serial.print(currentMoveDir);
     Serial.print(F(" | Speed: "));

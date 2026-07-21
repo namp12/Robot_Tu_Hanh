@@ -119,17 +119,11 @@ void MH_FMD_Init() {
     physical_pin_state = false;
 }
 
-void MH_FMD_Update(float front, float rear) {
+void MH_FMD_Update(float front) {
     unsigned long now = millis();
 
-    // 1. Lưu khoảng cách hiện tại (dùng giá trị nhỏ nhất hợp lệ)
-    float d_front = (front > 0.0f) ? front : 999.0f;
-    float d_rear = (rear > 0.0f) ? rear : 999.0f;
-    
-    current_distance = (d_front < d_rear) ? d_front : d_rear;
-    if (current_distance > 998.0f) {
-        current_distance = 400.0f; // Trả về khoảng cách an toàn nếu không đọc được
-    }
+    // 1. Lưu khoảng cách hiện tại (dùng giá trị hợp lệ của cảm biến trước)
+    current_distance = (front > 0.0f) ? front : 400.0f;
 
     // 2. Quyết định chế độ hoạt động của còi dựa trên thứ tự ưu tiên
     BuzzerMode target_mode = BUZZER_OFF;

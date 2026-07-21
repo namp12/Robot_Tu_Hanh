@@ -9,10 +9,11 @@
 // =============================================================================
 // KHAI BÁO VÀ ĐỊNH NGHĨA CÁC ĐỐI TƯỢNG PHẦN CỨNG (GLOBAL INSTANCES)
 // =============================================================================
-BTS7960 motorFL(6, 7);
-BTS7960 motorFR(4, 5);
-BTS7960 motorRL(8, 9);
-BTS7960 motorRR(10, 11);
+#include "PinMap.h"
+BTS7960 motorFL(MOTOR_FL_RPWM, MOTOR_FL_LPWM);
+BTS7960 motorFR(MOTOR_FR_RPWM, MOTOR_FR_LPWM);
+BTS7960 motorRL(MOTOR_RL_RPWM, MOTOR_RL_LPWM);
+BTS7960 motorRR(MOTOR_RR_RPWM, MOTOR_RR_LPWM);
 Motor car(motorFL, motorFR, motorRL, motorRR);
 
 MPU6050Sensor mpu;
@@ -22,6 +23,7 @@ const unsigned long MPU_INTERVAL = 20;
 
 // Khai báo và định nghĩa các biến trạng thái vận hành của xe
 OperatingMode currentMode = MODE_MANUAL;
+AutoState currentAutoState = AUTO_STOP;
 String currentMoveDir = "dung";
 int currentSpeed = 0;
 bool isAvoidanceActive = false;
@@ -49,8 +51,13 @@ void setup() {
     Serial.println(F("🤖 ROBOT MECANUM - HỆ THỐNG ĐIỀU KHIỂN & CHẨN ĐOÁN CẢM BIẾN"));
     Serial.println(F("======================================================="));
 
-    // 2. Khởi tạo cảm biến IMU MPU6050
-    Serial.println(F("[1/7] Khoi tao MPU6050 (SDA=18, SCL=19)..."));
+    // 2. Khởi tạo cảm biến siêu âm HC-SR04
+    Serial.println(F("[1/7] Khoi tao cam bien sieu am HC-SR04..."));
+    HC_SR04_Init();
+    HC_SR04_SetWarningDistance(OBSTACLE_TRIGGER_CM);
+
+    // 3. Khởi tạo cảm biến IMU MPU6050
+    Serial.println(F("[2/7] Khoi tao MPU6050 (SDA=18, SCL=19)..."));
     mpuOk = mpu.begin(18, 19);
     if (mpuOk) {
         Serial.println(F("  MPU6050 OK"));
@@ -58,23 +65,15 @@ void setup() {
         Serial.println(F("  MPU6050 THẤT BẠI! Xe vẫn hoạt động bình thường."));
     }
 
-    // 3. Khởi tạo các Driver động cơ BTS7960
-    Serial.println(F("[2/7] Khoi tao motorFL (RPWM=6, LPWM=7)..."));
+    // 4. Khởi tạo các Driver động cơ BTS7960
+    Serial.printf("[3/7] Khoi tao motorFL (RPWM=%d, LPWM=%d)...\n", MOTOR_FL_RPWM, MOTOR_FL_LPWM);
     motorFL.begin();
-    Serial.println(F("[3/7] Khoi tao motorFR (RPWM=4, LPWM=5)..."));
+    Serial.printf("[4/7] Khoi tao motorFR (RPWM=%d, LPWM=%d)...\n", MOTOR_FR_RPWM, MOTOR_FR_LPWM);
     motorFR.begin();
-    Serial.println(F("[4/7] Khoi tao motorRL (RPWM=8, LPWM=9)..."));
+    Serial.printf("[5/7] Khoi tao motorRL (RPWM=%d, LPWM=%d)...\n", MOTOR_RL_RPWM, MOTOR_RL_LPWM);
     motorRL.begin();
-    Serial.println(F("[5/7] Khoi tao motorRR (RPWM=10, LPWM=11)..."));
+    Serial.printf("[6/7] Khoi tao motorRR (RPWM=%d, LPWM=%d)...\n", MOTOR_RR_RPWM, MOTOR_RR_LPWM);
     motorRR.begin();
-
-    // 4. Khởi tạo cảm biến siêu âm HC-SR04
-    Serial.println(F("[6/7] Khoi tao cam bien sieu am HC-SR04..."));
-    HC_SR04_Init();
-    HC_SR04_SetWarningDistance(OBSTACLE_TRIGGER_CM);
-
-    // Mặc định chạy ở chế độ quét luân phiên FRONT và REAR
-    HC_SR04_TestMode(0);
 
     // 5. Khởi tạo còi cảnh báo MH-FMD (Active Low, Pulsing beeps)
     Serial.println(F("[7/7] Khoi tao coi active buzzer MH-FMD (GPIO41)..."));
@@ -100,7 +99,12 @@ void setup() {
 // LOOP
 // =============================================================================
 void loop() {
-    // 1. Cập nhật góc IMU MPU6050 định kỳ không block
+    // 1. Cập nhật trạng thái cảm biến siêu âm (nếu không bị tạm dừng bởi test module)
+    if (should_run_sensor_update()) {
+        HC_SR04_Update();
+    }
+
+    // 2. Cập nhật góc IMU MPU6050 định kỳ không block
     if (mpuOk) {
         unsigned long now = millis();
         if (now - lastMpuUpdate >= MPU_INTERVAL) {
@@ -109,22 +113,16 @@ void loop() {
         }
     }
 
-    // 2. Cập nhật trạng thái cảm biến siêu âm (nếu không bị tạm dừng bởi test module)
-    if (should_run_sensor_update()) {
-        HC_SR04_Update();
-    }
-
     // 3. Cập nhật phân hệ test module (đọc Serial và xử lý lệnh test)
     test_module_Update();
 
     // 4. Cập nhật các luồng hoạt động chính dựa vào trạng thái chế độ
     float frontDist = HC_SR04_GetFrontDistance();
-    float rearDist = HC_SR04_GetRearDistance();
 
     if (!is_in_test_mode()) {
         // Trong chế độ hoạt động bình thường (Manual hoặc Auto):
-        // Cập nhật còi cảnh báo dựa trên khoảng cách
-        MH_FMD_Update(frontDist, rearDist);
+        // Cập nhật còi cảnh báo dựa trên khoảng cách trước
+        MH_FMD_Update(frontDist);
 
         // Cập nhật phân hệ chạy tự động tránh vật cản (auto_run.cpp)
         auto_run_Update();
@@ -134,7 +132,7 @@ void loop() {
     } else {
         // Trong chế độ kiểm tra module:
         // Cập nhật còi cảnh báo để xử lý âm báo test/beep thủ công
-        MH_FMD_Update(frontDist, rearDist);
+        MH_FMD_Update(frontDist);
 
         // Cập nhật tiến trình test động cơ (cho phép test_motor chạy bình thường)
         updateMotorTest();

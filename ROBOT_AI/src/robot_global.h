@@ -9,16 +9,27 @@
 #include <Arduino.h>
 #include "BTS7960.h"
 #include "Motor.h"
-#include "Mpu6050.h"
 #include "Sensor_HC_SR04.h"
+#include "Mpu6050.h"
 #include "MH_FMD.h"
 
 // =============================================================================
-// ĐỊNH NGHĨA CHẾ ĐỘ HOẠT ĐỘNG
+// ĐỊNH NGHĨA CHẾ ĐỘ HOẠT ĐỘNG VÀ TRẠNG THÁI AUTO
 // =============================================================================
 enum OperatingMode {
     MODE_MANUAL, ///< Chế độ điều khiển bằng tay (Thủ công)
     MODE_AUTO    ///< Chế độ chạy tự động tránh vật cản
+};
+
+enum AutoState {
+    AUTO_IDLE,       ///< Trạng thái chờ / tạm dừng trước khi chạy hoặc khi bị Pause
+    AUTO_FORWARD,    ///< Chạy tiến thẳng tự động
+    AUTO_STOP,       ///< Dừng tạm thời
+    AUTO_BACKWARD,   ///< Lùi lại ngắn khi gặp vật cản / recovery
+    AUTO_SCAN,       ///< Dừng xe, chờ cảm biến ổn định và xác nhận khoảng cách
+    AUTO_TURN_LEFT,  ///< Quay trái theo góc chỉ định
+    AUTO_TURN_RIGHT, ///< Quay phải theo góc chỉ định
+    AUTO_RECOVER     ///< Quy trình phục hồi khi bị kẹt hoặc đường bị chặn
 };
 
 // =============================================================================
@@ -37,6 +48,7 @@ extern const unsigned long MPU_INTERVAL;
 
 // Trạng thái vận hành của xe
 extern OperatingMode currentMode;
+extern AutoState currentAutoState;
 extern String currentMoveDir;
 extern int currentSpeed;
 extern bool isAvoidanceActive;
@@ -63,6 +75,9 @@ void updateMotorTest();
 // Phân hệ chạy tự động (auto_run.cpp)
 void auto_run_Init();
 void auto_run_Update();
+void auto_run_ResetState();
+void auto_run_ProcessPiCommand(const String& cmd);
+const char* auto_run_GetStateName(AutoState state);
 
 void printStatus();
 

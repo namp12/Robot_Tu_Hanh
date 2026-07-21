@@ -15,12 +15,8 @@
 // =============================================================================
 // CẤU HÌNH PHẦN CỨNG - PIN ASSIGNMENTS
 // =============================================================================
-#include "PinMap.h"
-
-#define HC_SR04_FRONT_TRIG HC_FRONT_TRIG   ///< Chân TRIG cảm biến trước
-#define HC_SR04_FRONT_ECHO HC_FRONT_ECHO   ///< Chân ECHO cảm biến trước
-#define HC_SR04_REAR_TRIG  HC_REAR_TRIG    ///< Chân TRIG cảm biến sau
-#define HC_SR04_REAR_ECHO  HC_REAR_ECHO    ///< Chân ECHO cảm biến sau
+#define HC_SR04_FRONT_TRIG 1    ///< Chân TRIG cảm biến trước
+#define HC_SR04_FRONT_ECHO 2    ///< Chân ECHO cảm biến trước
 
 // =============================================================================
 // KHAI BÁO CÁC HÀM GIAO TIẾP (API)
@@ -42,17 +38,11 @@ float readSensor(const char* name, uint8_t trigPin, uint8_t echoPin);
 void HC_SR04_Init();
 
 /**
- * @brief Cập nhật trạng thái đọc của các cảm biến siêu âm.
- * Chạy máy trạng thái (State Machine) luân phiên đọc cảm biến trước/sau không block CPU.
+ * @brief Cập nhật trạng thái đọc của cảm biến siêu âm phía trước.
  * Cần được gọi liên tục trong vòng lặp loop() chính của chương trình.
  */
 void HC_SR04_Update();
 
-/**
- * @brief Kích hoạt chế độ kiểm tra cho cảm biến chỉ định.
- * @param sensorSelect 0 cho cảm biến trước, 1 cho cảm biến sau.
- */
-void HC_SR04_TestMode(int sensorSelect);
 void HC_SR04_TestGPIO();
 void HC_SR04_TestTrigger();
 void HC_SR04_CheckConflicts();
@@ -64,19 +54,13 @@ void HC_SR04_CheckConflicts();
 float HC_SR04_GetFrontDistance();
 
 /**
- * @brief Lấy khoảng cách đã qua lọc Median của cảm biến sau.
- * @return Khoảng cách (cm).
- */
-float HC_SR04_GetRearDistance();
-
-/**
- * @brief Lấy khoảng cách nhỏ nhất giữa cảm biến trước và sau.
+ * @brief Lấy khoảng cách nhỏ nhất (bằng khoảng cách cảm biến trước).
  * @return Khoảng cách nhỏ nhất (cm).
  */
 float HC_SR04_GetMinDistance();
 
 /**
- * @brief Lấy khoảng cách lớn nhất giữa cảm biến trước và sau.
+ * @brief Lấy khoảng cách lớn nhất (bằng khoảng cách cảm biến trước).
  * @return Khoảng cách lớn nhất (cm).
  */
 float HC_SR04_GetMaxDistance();
@@ -89,14 +73,7 @@ float HC_SR04_GetMaxDistance();
 bool HC_SR04_FrontObstacle(float cm);
 
 /**
- * @brief Kiểm tra xem phía sau có vật cản dưới ngưỡng xác định hay không.
- * @param cm Ngưỡng khoảng cách cần kiểm tra (cm)
- * @return true nếu có vật cản, ngược lại là false.
- */
-bool HC_SR04_RearObstacle(float cm);
-
-/**
- * @brief Kiểm tra xem phía trước HOẶC phía sau có vật cản dưới ngưỡng xác định hay không.
+ * @brief Kiểm tra xem phía trước có vật cản dưới ngưỡng xác định hay không.
  * @param cm Ngưỡng khoảng cách cần kiểm tra (cm)
  * @return true nếu có vật cản, ngược lại là false.
  */
@@ -107,18 +84,6 @@ bool HC_SR04_HasObstacle(float cm);
  * @return true nếu hoạt động bình thường, false nếu mất kết nối (nhiều lần timeout liên tiếp).
  */
 bool HC_SR04_FrontOnline();
-
-/**
- * @brief Kiểm tra xem cảm biến sau có đang hoạt động trực tuyến (online) hay không.
- * @return true nếu hoạt động bình thường, false nếu mất kết nối.
- */
-bool HC_SR04_RearOnline();
-
-/**
- * @brief Kiểm tra xem cả hai cảm biến có đang online hay không.
- * @return true nếu cả hai hoạt động bình thường.
- */
-bool HC_SR04_AllOnline();
 
 /**
  * @brief Cấu hình khoảng cách cảnh báo mặc định.

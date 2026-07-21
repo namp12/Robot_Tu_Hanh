@@ -1,5 +1,9 @@
 #include "BTS7960.h"
 
+#if defined(ESP32)
+#include "driver/gpio.h"
+#endif
+
 // =============================================
 // Core 2.x: khởi tạo bộ đếm kênh tĩnh
 // =============================================
@@ -45,14 +49,24 @@ void BTS7960::writePWM(uint8_t pin, uint8_t channel, uint8_t duty) {
 // begin(): khởi tạo PWM và chân Enable
 // =============================================
 void BTS7960::begin() {
+#if defined(ESP32)
+  gpio_reset_pin((gpio_num_t)_rpwmPin);
+  gpio_reset_pin((gpio_num_t)_lpwmPin);
+#endif
+  pinMode(_rpwmPin, OUTPUT);
+  pinMode(_lpwmPin, OUTPUT);
+
   // Cấu hình chân Enable nếu được khai báo
   if (_renPin != 255) { pinMode(_renPin, OUTPUT); digitalWrite(_renPin, HIGH); }
   if (_lenPin != 255) { pinMode(_lenPin, OUTPUT); digitalWrite(_lenPin, HIGH); }
 
 #if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
   // Core 3.x: gắn pin PWM, tự quản lý kênh nội bộ
-  ledcAttach(_rpwmPin, _freq, _resolution);
-  ledcAttach(_lpwmPin, _freq, _resolution);
+  bool rpwmAttached = ledcAttach(_rpwmPin, _freq, _resolution);
+  bool lpwmAttached = ledcAttach(_lpwmPin, _freq, _resolution);
+  Serial.printf("[LEDC Debug] Pin %d attach: %s | Pin %d attach: %s\n", 
+                _rpwmPin, rpwmAttached ? "SUCCESS" : "FAILED", 
+                _lpwmPin, lpwmAttached ? "SUCCESS" : "FAILED");
 #else
   // Core 2.x: đặt kênh, tần số, độ phân giải rồi gắn pin
   ledcSetup(_rpwmChannel, _freq, _resolution);

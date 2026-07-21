@@ -23,8 +23,6 @@
 #define CH_RR_L       7
 
 // --- Thông số vật lý của Robot ---
-const float PPR = 11.0;          // Số xung trên 1 vòng của Encoder (chưa qua giảm tốc)
-const float GEAR_RATIO = 30.0;   // Tỉ số truyền hộp giảm tốc (ví dụ 1:30)
 const float WHEEL_DIAMETER = 0.08; // Đường kính bánh xe (0.08m = 80mm)
 const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * PI; // Chu vi bánh xe
 
@@ -34,5 +32,52 @@ const float L_Y = 0.15; // m (Khoảng cách từ tâm đến trục bánh xe th
 
 // --- Tốc độ Baud giao tiếp Serial ---
 #define SERIAL_BAUD 115200
+
+// =============================================================================
+// 🤖 CẤU HÌNH CHẾ ĐỘ TỰ ĐỘNG (AUTO MODE CONFIGURATION)
+// =============================================================================
+
+// --- Cấu hình PID Giữ Hướng (Yaw Heading Hold) ---
+#define AUTO_PID_ENABLED           true    // Bật/Tắt bộ điều khiển PID giữ hướng
+const float AUTO_KP              = 2.5f;   // Hệ số Kp
+const float AUTO_KI              = 0.05f;  // Hệ số Ki
+const float AUTO_KD              = 0.8f;   // Hệ số Kd
+const int   AUTO_MAX_CORRECTION  = 50;     // Tốc độ điều chỉnh PWM tối đa của PID
+const int   AUTO_PID_OUTPUT_CLAMP = 40;    // Giới hạn Clamp đầu ra PID (tránh rung dao động động cơ)
+
+// --- Cấu hình Tốc độ PWM & Khoảng cách Cảm biến ---
+const int   AUTO_MAX_SPEED       = 180;    // PWM tốc độ tối đa khi đường thoáng (0-255)
+const int   AUTO_MIN_SPEED       = 100;    // PWM tốc độ tối thiểu trước khi dừng hẳn
+const float AUTO_DIST_SLOW_CM    = 60.0f;  // Khoảng cách bắt đầu giảm tốc độ (cm)
+const float AUTO_DIST_STOP_CM    = 25.0f;  // Khoảng cách dừng hoàn toàn để chuyển tránh vật cản (cm)
+const float AUTO_DIST_CLEAR_CM   = 65.0f;  // Khoảng cách an toàn để quay lại tiến thẳng (cm)
+
+// --- Cấu hình Tăng/Giảm tốc mềm (PWM Acceleration/Deceleration Ramp) ---
+const int   AUTO_RAMP_STEP       = 10;     // Số bước thay đổi PWM mỗi chu kỳ
+const unsigned long AUTO_RAMP_INTERVAL_MS = 15; // Khoảng thời gian giữa các bước tăng PWM (ms)
+
+// --- Bộ lọc xác nhận quyết định từ cảm biến (Debounce / Hysteresis) ---
+const uint8_t AUTO_OBSTACLE_DEBOUNCE_COUNT = 3; // Số lần đọc liên tiếp nhỏ hơn ngưỡng mới xác nhận có vật cản
+
+// --- Cấu hình Recovery & Quay Góc ---
+const unsigned long AUTO_BACKWARD_TIME_MS  = 500;  // Thời gian lùi ngắn khi bắt đầu Recovery (ms)
+const unsigned long AUTO_SCAN_TIME_MS      = 300;  // Thời gian dừng quét cảm biến giữa các bước (ms)
+const int   AUTO_TURN_DEFAULT_SPEED        = 150;  // PWM mặc định khi quay góc
+const float AUTO_TURN_TOLERANCE_DEG        = 4.0f; // Dung sai góc quay chấp nhận được (độ)
+const unsigned long AUTO_TURN_TIMEOUT_MS   = 2500; // Timeout tối đa cho 1 lần quay (ms)
+// --- Cấu hình Chống Mắc Kẹt (Stuck Prevention) ---
+const unsigned long AUTO_STUCK_TIMEOUT_MS  = 10000;// Thời gian tối đa không tiến lên được sẽ coi là mắc kẹt (10s)
+const uint8_t AUTO_RECOVERY_RETRY_LIMIT    = 3;    // Số lần thử Recovery tối đa trước khi báo lỗi về MANUAL
+
+// --- Cấu hình Trạng thái Chờ AUTO_IDLE ---
+const unsigned long AUTO_IDLE_TIMEOUT_MS   = 30000;// Thời gian chờ tự động trong IDLE (ms)
+
+// --- Cấu hình Phản hồi Encoder & MPU6050 ---
+#define ENCODER_ENABLED            true    // Bật/Tắt phản hồi cân bằng tốc độ bánh bằng Encoder
+
+// --- Cấu hình Phát hiện Va Chạm (Collision Detection via MPU6050) ---
+#define AUTO_COLLISION_ENABLED     true    // Bật/Tắt phát hiện va chạm bằng MPU6050
+const float AUTO_COLLISION_THRESHOLD_MS2 = 25.0f; // Ngưỡng gia tốc tổng quát phát hiện va chạm mạnh (m/s^2, ~2.5g)
+const uint8_t AUTO_COLLISION_DEBOUNCE_COUNT = 3; // Số mẫu gia tốc liên tiếp vượt ngưỡng mới báo va chạm
 
 #endif // CONFIG_H

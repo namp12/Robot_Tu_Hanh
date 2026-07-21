@@ -4,6 +4,7 @@
  */
 
 #include "robot_global.h"
+#include "PinMap.h"
 
 // =============================================================================
 // BIẾN NỘI BỘ (INTERNAL VARIABLES)
@@ -61,32 +62,39 @@ void printHelp() {
     Serial.println(F("   debug              -> Xem tần số PWM và trạng thái pin"));
     Serial.println(F("   test_motor         -> Chạy tuần tự test động cơ (không block)"));
     Serial.println(F("   bypass / bp        -> Bật/Tắt bỏ qua lỗi cảm biến siêu âm (để test AUTO)"));
+    Serial.println(F("   pi <lệnh>          -> Gửi lệnh Raspberry Pi mở rộng (forward, backward, left, right, rotate_left, rotate_right, stop, recover, set_speed <v>, set_target_angle <a>)"));
     Serial.println(F("   help / h           -> In lại bảng hướng dẫn này"));
     Serial.println(F("========================================================\n"));
 }
 
 void printMotorDebug() {
     Serial.println(F("\n--- DEBUG LEDC/GPIO MOTOR ---"));
-    Serial.printf("  motorFL: RPWM=GPIO%-2d ch=0  | LPWM=GPIO%-2d ch=1\n", 6, 7);
+    Serial.printf("  motorFL: RPWM=GPIO%-2d ch=%-2d | LPWM=GPIO%-2d ch=%-2d\n", 
+                  MOTOR_FL_RPWM, motorFL.getRpwmChannel(), MOTOR_FL_LPWM, motorFL.getLpwmChannel());
     Serial.printf("           duty RPWM=%lu | duty LPWM=%lu | freq=%.0f Hz\n",
-                  ledcRead(0), ledcRead(1), (float)ledcReadFreq(0));
+                  ledcRead(motorFL.getRpwmChannel()), ledcRead(motorFL.getLpwmChannel()), (float)ledcReadFreq(motorFL.getRpwmChannel()));
 
-    Serial.printf("  motorFR: RPWM=GPIO%-2d ch=2  | LPWM=GPIO%-2d ch=3\n", 4, 5);
+    Serial.printf("  motorFR: RPWM=GPIO%-2d ch=%-2d | LPWM=GPIO%-2d ch=%-2d\n", 
+                  MOTOR_FR_RPWM, motorFR.getRpwmChannel(), MOTOR_FR_LPWM, motorFR.getLpwmChannel());
     Serial.printf("           duty RPWM=%lu | duty LPWM=%lu | freq=%.0f Hz\n",
-                  ledcRead(2), ledcRead(3), (float)ledcReadFreq(2));
+                  ledcRead(motorFR.getRpwmChannel()), ledcRead(motorFR.getLpwmChannel()), (float)ledcReadFreq(motorFR.getRpwmChannel()));
 
-    Serial.printf("  motorRL: RPWM=GPIO%-2d ch=4  | LPWM=GPIO%-2d ch=5\n", 8, 9);
+    Serial.printf("  motorRL: RPWM=GPIO%-2d ch=%-2d | LPWM=GPIO%-2d ch=%-2d\n", 
+                  MOTOR_RL_RPWM, motorRL.getRpwmChannel(), MOTOR_RL_LPWM, motorRL.getLpwmChannel());
     Serial.printf("           duty RPWM=%lu | duty LPWM=%lu | freq=%.0f Hz\n",
-                  ledcRead(4), ledcRead(5), (float)ledcReadFreq(4));
+                  ledcRead(motorRL.getRpwmChannel()), ledcRead(motorRL.getLpwmChannel()), (float)ledcReadFreq(motorRL.getRpwmChannel()));
 
-    Serial.printf("  motorRR: RPWM=GPIO%-2d ch=6  | LPWM=GPIO%-2d ch=7\n", 10, 11);
+    Serial.printf("  motorRR: RPWM=GPIO%-2d ch=%-2d | LPWM=GPIO%-2d ch=%-2d\n", 
+                  MOTOR_RR_RPWM, motorRR.getRpwmChannel(), MOTOR_RR_LPWM, motorRR.getLpwmChannel());
     Serial.printf("           duty RPWM=%lu | duty LPWM=%lu | freq=%.0f Hz\n",
-                  ledcRead(6), ledcRead(7), (float)ledcReadFreq(6));
+                  ledcRead(motorRR.getRpwmChannel()), ledcRead(motorRR.getLpwmChannel()), (float)ledcReadFreq(motorRR.getRpwmChannel()));
 
-    Serial.printf("  GPIO logic level: pin4=%d pin5=%d pin6=%d pin7=%d\n",
-                  digitalRead(4), digitalRead(5), digitalRead(6), digitalRead(7));
-    Serial.printf("  GPIO logic level: pin8=%d pin9=%d pin10=%d pin11=%d\n",
-                  digitalRead(8), digitalRead(9), digitalRead(10), digitalRead(11));
+    Serial.printf("  GPIO logic level: pin%d=%d pin%d=%d pin%d=%d pin%d=%d\n",
+                  MOTOR_FR_RPWM, digitalRead(MOTOR_FR_RPWM), MOTOR_FR_LPWM, digitalRead(MOTOR_FR_LPWM),
+                  MOTOR_FL_RPWM, digitalRead(MOTOR_FL_RPWM), MOTOR_FL_LPWM, digitalRead(MOTOR_FL_LPWM));
+    Serial.printf("  GPIO logic level: pin%d=%d pin%d=%d pin%d=%d pin%d=%d\n",
+                  MOTOR_RL_RPWM, digitalRead(MOTOR_RL_RPWM), MOTOR_RL_LPWM, digitalRead(MOTOR_RL_LPWM),
+                  MOTOR_RR_RPWM, digitalRead(MOTOR_RR_RPWM), MOTOR_RR_LPWM, digitalRead(MOTOR_RR_LPWM));
     Serial.println(F("----------------------------\n"));
 }
 
@@ -349,7 +357,16 @@ void processCommand(String cmd) {
         currentMode = MODE_AUTO;
         isAvoidanceActive = false;
         autoModeStartTime = millis();
+        auto_run_ResetState();
         Serial.println(F("   [System] Đã chuyển sang chế độ AUTO. Đang đồng bộ cảm biến trong 1.5s..."));
+
+    } else if (action == "pi") {
+        if (spaceIndex != -1) {
+            String piCmd = cmd.substring(spaceIndex + 1);
+            auto_run_ProcessPiCommand(piCmd);
+        } else {
+            Serial.println(F("   [PI INTERFACE] Vui lòng nhập lệnh (VD: pi forward, pi turn_left 90, pi stop)"));
+        }
 
     } else if (action == "mpu") {
         if (!mpuOk) {
