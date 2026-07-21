@@ -223,6 +223,7 @@ void processCommand(String cmd) {
     else if (action == "h") { action = "help"; }
     else if (action == "m" || action == "man" || action == "manual" || action == "1") { action = "mode_manual"; }
     else if (action == "run" || action == "auto" || action == "2") { action = "mode_auto"; }
+    else if (action == "ros2" || action == "mode_ros2" || action == "4") { action = "mode_ros2"; }
     else if (action == "st" || action == "status") { action = "print_status"; }
     else if (action == "bp" || action == "bypass") { action = "toggle_bypass"; }
 
@@ -359,6 +360,14 @@ void processCommand(String cmd) {
         autoModeStartTime = millis();
         auto_run_ResetState();
         Serial.println(F("   [System] Đã chuyển sang chế độ AUTO. Đang đồng bộ cảm biến trong 1.5s..."));
+
+    } else if (action == "mode_ros2") {
+        currentMode = MODE_ROS2;
+        isAvoidanceActive = false;
+        currentMoveDir = "dung";
+        currentSpeed = 0;
+        car.stop();
+        Serial.println(F("   [System] Đã chuyển sang chế độ ROS2 MODE (MÁY TÍNH LÁI)."));
 
     } else if (action == "pi") {
         if (spaceIndex != -1) {

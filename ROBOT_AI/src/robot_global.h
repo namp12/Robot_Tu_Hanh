@@ -12,13 +12,15 @@
 #include "Sensor_HC_SR04.h"
 #include "Mpu6050.h"
 #include "MH_FMD.h"
+#include "ROS2BridgeManager.h"
 
 // =============================================================================
 // ĐỊNH NGHĨA CHẾ ĐỘ HOẠT ĐỘNG VÀ TRẠNG THÁI AUTO
 // =============================================================================
 enum OperatingMode {
     MODE_MANUAL, ///< Chế độ điều khiển bằng tay (Thủ công)
-    MODE_AUTO    ///< Chế độ chạy tự động tránh vật cản
+    MODE_AUTO,   ///< Chế độ chạy tự động tránh vật cản
+    MODE_ROS2    ///< Chế độ nhận lệnh từ Raspberry Pi (ROS2 Mode)
 };
 
 enum AutoState {
@@ -45,6 +47,8 @@ extern MPU6050Sensor mpu;
 extern bool mpuOk;
 extern unsigned long lastMpuUpdate;
 extern const unsigned long MPU_INTERVAL;
+
+extern ROS2BridgeManager ros2Bridge;
 
 // Trạng thái vận hành của xe
 extern OperatingMode currentMode;

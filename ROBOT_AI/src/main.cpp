@@ -21,6 +21,8 @@ bool mpuOk = false;
 unsigned long lastMpuUpdate = 0;
 const unsigned long MPU_INTERVAL = 20;
 
+ROS2BridgeManager ros2Bridge;
+
 // Khai báo và định nghĩa các biến trạng thái vận hành của xe
 OperatingMode currentMode = MODE_MANUAL;
 AutoState currentAutoState = AUTO_STOP;
@@ -88,6 +90,9 @@ void setup() {
     auto_run_Init();
     autoModeStartTime = millis();
 
+    Serial.println(F("[System] Khoi tao giao truyen thong ROS2 (50Hz)..."));
+    ros2Bridge.begin(&Serial, 50);
+
     Serial.println(F("=== HỆ THỐNG SẴN SÀNG ==="));
     Serial.println(F("---------------------------------------------"));
     
@@ -115,6 +120,9 @@ void loop() {
 
     // 3. Cập nhật phân hệ test module (đọc Serial và xử lý lệnh test)
     test_module_Update();
+
+    // 4. Cập nhật phân hệ giao tiếp 2 chiều ROS2 (nhận cmd_vel và bắn Telemetry 50Hz)
+    ros2Bridge.update();
 
     // 4. Cập nhật các luồng hoạt động chính dựa vào trạng thái chế độ
     float frontDist = HC_SR04_GetFrontDistance();
