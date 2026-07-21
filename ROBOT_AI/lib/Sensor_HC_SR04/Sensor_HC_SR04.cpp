@@ -13,11 +13,13 @@
 // KHAI BÁO BIẾN NỘI BỘ (INTERNAL VARIABLES)
 // =============================================================================
 static bool front_online = false;
+static bool rear_online = false;
 static float warning_distance = 50.0f;
 static bool hc_sr04_debug = false; // Flag kiểm soát in debug của readSensor
 
 // Lưu trữ các lý do offline cụ thể để hiển thị
 static String front_offline_reason = "No Echo";
+static String rear_offline_reason = "No Echo";
 
 struct RollingBuffer {
     float samples[FILTER_SIZE];
@@ -26,6 +28,7 @@ struct RollingBuffer {
 };
 
 static RollingBuffer front_buffer;
+static RollingBuffer rear_buffer;
 
 // =============================================================================
 // CÁC HÀM TIỆN ÍCH NỘI BỘ
@@ -90,19 +93,31 @@ void HC_SR04_Init() {
     // 4. Cấu hình chân ECHO làm INPUT chuẩn (Không Dùng PULLUP/PULLDOWN)
     pinMode(HC_SR04_FRONT_ECHO, INPUT);
 
-    // 5. In sơ đồ chân phần cứng theo yêu cầu trong setup
+    // 5. Khởi tạo cảm biến sau nếu có chân định nghĩa
+    gpio_reset_pin((gpio_num_t)HC_SR04_REAR_TRIG);
+    gpio_reset_pin((gpio_num_t)HC_SR04_REAR_ECHO);
+    pinMode(HC_SR04_REAR_TRIG, OUTPUT);
+    digitalWrite(HC_SR04_REAR_TRIG, LOW);
+    pinMode(HC_SR04_REAR_ECHO, INPUT);
+
+    // 6. In sơ đồ chân phần cứng theo yêu cầu trong setup
     Serial.println(F("========================"));
     Serial.println(F("HC-SR04 GPIO Mapping"));
     Serial.println(F("========================"));
     Serial.printf("Front TRIG GPIO : %d\n", HC_SR04_FRONT_TRIG);
     Serial.printf("Front ECHO GPIO : %d\n", HC_SR04_FRONT_ECHO);
+    Serial.printf("Rear TRIG GPIO  : %d\n", HC_SR04_REAR_TRIG);
+    Serial.printf("Rear ECHO GPIO  : %d\n", HC_SR04_REAR_ECHO);
     Serial.println(F("========================"));
 
-    // 6. Khởi tạo bộ đệm
+    // 7. Khởi tạo bộ đệm
     initBuffer(front_buffer, -1.0f);
+    initBuffer(rear_buffer, -1.0f);
 
     front_online = false;
+    rear_online = false;
     front_offline_reason = "No Init Reading";
+    rear_offline_reason = "No Init Reading";
 }
 
 void HC_SR04_TestGPIO() {
@@ -207,22 +222,38 @@ float readSensor(const char* name, uint8_t trigPin, uint8_t echoPin) {
 void HC_SR04_Update() {
     unsigned long now = millis();
     static unsigned long last_measurement_time = 0;
+    static bool measure_front_next = true;
 
     // Đo cách quãng ~60ms không block CPU
     if (now - last_measurement_time < 60) {
         return;
     }
 
-    float dist = readSensor("FRONT", HC_SR04_FRONT_TRIG, HC_SR04_FRONT_ECHO);
-    if (dist >= 2.0f && dist <= 450.0f) {
-        addSample(front_buffer, dist);
-        front_online = true;
-        front_offline_reason = "None";
+    if (measure_front_next) {
+        float dist = readSensor("FRONT", HC_SR04_FRONT_TRIG, HC_SR04_FRONT_ECHO);
+        if (dist >= 2.0f && dist <= 450.0f) {
+            addSample(front_buffer, dist);
+            front_online = true;
+            front_offline_reason = "None";
+        } else {
+            front_online = false;
+            int echo_state = digitalRead(HC_SR04_FRONT_ECHO);
+            front_offline_reason = (echo_state == HIGH) ? "Echo Stuck HIGH" : "Echo Stuck LOW / Timeout";
+        }
     } else {
-        front_online = false;
-        int echo_state = digitalRead(HC_SR04_FRONT_ECHO);
-        front_offline_reason = (echo_state == HIGH) ? "Echo Stuck HIGH" : "Echo Stuck LOW / Timeout";
+        float dist = readSensor("REAR", HC_SR04_REAR_TRIG, HC_SR04_REAR_ECHO);
+        if (dist >= 2.0f && dist <= 450.0f) {
+            addSample(rear_buffer, dist);
+            rear_online = true;
+            rear_offline_reason = "None";
+        } else {
+            rear_online = false;
+            int echo_state = digitalRead(HC_SR04_REAR_ECHO);
+            rear_offline_reason = (echo_state == HIGH) ? "Echo Stuck HIGH" : "Echo Stuck LOW / Timeout";
+        }
     }
+
+    measure_front_next = !measure_front_next;
     last_measurement_time = millis();
 }
 
@@ -230,12 +261,24 @@ float HC_SR04_GetFrontDistance() {
     return getMedian(front_buffer);
 }
 
+float HC_SR04_GetRearDistance() {
+    return getMedian(rear_buffer);
+}
+
 float HC_SR04_GetMinDistance() {
-    return HC_SR04_GetFrontDistance();
+    float f = HC_SR04_GetFrontDistance();
+    float r = HC_SR04_GetRearDistance();
+    if (f < 0.0f) return r;
+    if (r < 0.0f) return f;
+    return min(f, r);
 }
 
 float HC_SR04_GetMaxDistance() {
-    return HC_SR04_GetFrontDistance();
+    float f = HC_SR04_GetFrontDistance();
+    float r = HC_SR04_GetRearDistance();
+    if (f < 0.0f) return r;
+    if (r < 0.0f) return f;
+    return max(f, r);
 }
 
 bool HC_SR04_FrontObstacle(float cm) {
@@ -243,12 +286,21 @@ bool HC_SR04_FrontObstacle(float cm) {
     return (f > 0.0f && f <= cm);
 }
 
+bool HC_SR04_RearObstacle(float cm) {
+    float r = HC_SR04_GetRearDistance();
+    return (r > 0.0f && r <= cm);
+}
+
 bool HC_SR04_HasObstacle(float cm) {
-    return HC_SR04_FrontObstacle(cm);
+    return HC_SR04_FrontObstacle(cm) || HC_SR04_RearObstacle(cm);
 }
 
 bool HC_SR04_FrontOnline() {
     return front_online;
+}
+
+bool HC_SR04_RearOnline() {
+    return rear_online;
 }
 
 void HC_SR04_SetWarningDistance(float cm) {
