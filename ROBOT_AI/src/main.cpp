@@ -22,6 +22,9 @@ unsigned long lastMpuUpdate = 0;
 const unsigned long MPU_INTERVAL = 20;
 
 ROS2BridgeManager ros2Bridge;
+// Publish data for Raspberry Pi / ROS2 parser over Serial USB
+static unsigned long lastSensorPublishTime = 0;
+const unsigned long SENSOR_PUBLISH_INTERVAL_MS = 200;
 
 // Khai báo và định nghĩa các biến trạng thái vận hành của xe
 OperatingMode currentMode = MODE_MANUAL;
@@ -121,10 +124,38 @@ void loop() {
     // 3. Cập nhật phân hệ test module (đọc Serial và xử lý lệnh test)
     test_module_Update();
 
+    // 3.1. Xuất dữ liệu cảm biến/IMU định kỳ cho Raspberry Pi / ROS2 đọc
+    unsigned long nowPublish = millis();
+    if (nowPublish - lastSensorPublishTime >= SENSOR_PUBLISH_INTERVAL_MS) {
+        lastSensorPublishTime = nowPublish;
+        float frontDist = HC_SR04_GetFrontDistance();
+        float accelX = 0.0f, accelY = 0.0f, accelZ = 0.0f;
+        float gyroX = 0.0f, gyroY = 0.0f, gyroZ = 0.0f;
+        float roll = 0.0f, pitch = 0.0f, yaw = 0.0f;
+
+        if (mpuOk) {
+            accelX = mpu.getAccelX();
+            accelY = mpu.getAccelY();
+            accelZ = mpu.getAccelZ();
+            gyroX = mpu.getGyroX();
+            gyroY = mpu.getGyroY();
+            gyroZ = mpu.getGyroZ();
+            roll = mpu.getRoll();
+            pitch = mpu.getPitch();
+            yaw = mpu.getYaw();
+        }
+
+        Serial.printf(
+            "ESP32_DATA front=%.2f ax=%.3f ay=%.3f az=%.3f gx=%.3f gy=%.3f gz=%.3f roll=%.2f pitch=%.2f yaw=%.2f\n",
+            frontDist, accelX, accelY, accelZ,
+            gyroX, gyroY, gyroZ,
+            roll, pitch, yaw);
+    }
+
     // 4. Cập nhật phân hệ giao tiếp 2 chiều ROS2 (nhận cmd_vel và bắn Telemetry 50Hz)
     ros2Bridge.update();
 
-    // 4. Cập nhật các luồng hoạt động chính dựa vào trạng thái chế độ
+    // 5. Cập nhật các luồng hoạt động chính dựa vào trạng thái chế độ
     float frontDist = HC_SR04_GetFrontDistance();
 
     if (!is_in_test_mode()) {
