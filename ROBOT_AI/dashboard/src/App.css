@@ -1,0 +1,401 @@
+/* Modern Premium Dark Glassmorphism Styling */
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent-blue: #38bdf8;
+  --accent-red: #ef4444;
+  --accent-green: #22c55e;
+  --accent-orange: #f97316;
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 20px;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  font-size: 2rem;
+}
+
+.header-title h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.connection-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  padding: 6px 12px;
+  border-radius: 12px;
+}
+
+.ws-input {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  width: 200px;
+  transition: border-color 0.2s;
+}
+
+.ws-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.connect-btn {
+  background: var(--accent-blue);
+  color: var(--bg-primary);
+  border: none;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s;
+}
+
+.connect-btn:hover {
+  opacity: 0.9;
+}
+
+.connect-btn:active {
+  transform: scale(0.96);
+}
+
+.status-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.connected {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.connecting {
+  background: rgba(249, 115, 22, 0.15);
+  color: var(--accent-orange);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.status-badge.disconnected {
+  background: rgba(239, 68, 110, 0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 110, 0.3);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  flex: 1;
+}
+
+.dashboard-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-card h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+  border-left: 4px solid var(--accent-blue);
+  padding-left: 10px;
+}
+
+/* Distance Sensor Styling */
+.distance-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.distance-meter h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.meter-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.meter-bar-container {
+  background: rgba(15, 23, 42, 0.8);
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  margin-top: 8px;
+}
+
+.meter-bar {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--accent-blue), #818cf8);
+  transition: width 0.3s ease;
+}
+
+.meter-bar.warning {
+  background: linear-gradient(90deg, var(--accent-red), #f43f5e);
+}
+
+/* IMU Card Styling */
+.imu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.imu-value-box {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.imu-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.imu-data {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.yaw-text { color: #f43f5e; }
+.pitch-text { color: #10b981; }
+.roll-text { color: #3b82f6; }
+
+.imu-details {
+  border-top: 1px solid var(--glass-border);
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Status & Modes Card */
+.status-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.3);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.status-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.status-value {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.mode-badge {
+  color: var(--accent-blue);
+  background: rgba(56, 189, 248, 0.1);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.state-badge {
+  color: var(--accent-orange);
+  background: rgba(249, 115, 22, 0.1);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(249, 115, 22, 0.2);
+}
+
+.motor-speeds h3 {
+  font-size: 0.95rem;
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.motor-speeds-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  font-size: 0.85rem;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 10px;
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+/* Control Panel Card Styling */
+.control-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  justify-content: center;
+  flex: 1;
+}
+
+.beep-btn {
+  background: linear-gradient(135deg, var(--accent-orange), #f97316);
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+}
+
+.beep-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.3);
+}
+
+.beep-btn:active {
+  transform: translateY(1px);
+}
+
+.mode-selection-group h3 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.mode-btn-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.mode-btn {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn:hover {
+  border-color: var(--accent-blue);
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.mode-btn:active {
+  transform: scale(0.96);
+}
+
+.dashboard-footer {
+  margin-top: 20px;
+  border-top: 1px solid var(--glass-border);
+  padding-top: 20px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 600px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .connection-panel {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: space-between;
+  }
+  .ws-input {
+    flex: 1;
+    width: auto;
+  }
+}

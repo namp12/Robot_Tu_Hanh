@@ -24,6 +24,7 @@
 #define MSG_ID_SET_MODE    0x03  ///< Pi -> ESP32: Lệnh đổi Mode (MANUAL, AUTO, ROS2, E-STOP)
 #define MSG_ID_RESET_GOC   0x04  ///< Pi -> ESP32: Lệnh reset góc Yaw MPU6050 về 0
 #define MSG_ID_ACK         0x05  ///< ESP32 -> Pi: Phản hồi xác nhận lệnh (Acknowledge)
+#define MSG_ID_TRIGGER_BEEP 0x06 ///< Pi -> ESP32: Lệnh còi (Beep) kêu từ dashboard/RPi
 
 // =============================================================================
 // CẤU TRÚC PAYLOAD NHỊ PHÂN (PACKED STRUCTS)

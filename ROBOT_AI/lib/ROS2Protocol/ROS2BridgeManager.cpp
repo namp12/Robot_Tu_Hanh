@@ -112,6 +112,12 @@ void ROS2BridgeManager::update() {
                     Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau reset goc Yaw MPU6050 ve 0"));
                     break;
                 }
+
+                case MSG_ID_TRIGGER_BEEP: {
+                    MH_FMD_Beep(500);
+                    Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau coi keu (Beep)"));
+                    break;
+                }
             }
         }
     }
