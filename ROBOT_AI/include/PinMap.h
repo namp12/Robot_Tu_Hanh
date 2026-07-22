@@ -39,6 +39,6 @@
 #define ENC_RR_B      36
 
 //================ BUZZER ==================
-#define MH_FMD_PIN    21
+#define MH_FMD_PIN    47
 
 #endif // PIN_MAP_H

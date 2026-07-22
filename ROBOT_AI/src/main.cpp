@@ -88,7 +88,7 @@ void setup() {
     motorRR.begin();
 
     // 5. Khởi tạo còi cảnh báo MH-FMD (Active Low, Pulsing beeps)
-    Serial.println(F("[7/7] Khoi tao coi active buzzer MH-FMD (GPIO41)..."));
+    Serial.printf("[7/7] Khoi tao coi active buzzer MH-FMD (GPIO%d)...\n", MH_FMD_PIN);
     MH_FMD_Init();
     MH_FMD_SetThreshold(OBSTACLE_TRIGGER_CM);
 
