@@ -1,4 +1,5 @@
 #include "HallEncoderDriver.h"
+#include "driver/gpio.h"
 
 static HallEncoderDriver* _instances[4] = {nullptr, nullptr, nullptr, nullptr};
 
@@ -23,6 +24,10 @@ HallEncoderDriver::HallEncoderDriver(uint8_t pinA, uint8_t pinB, uint8_t index)
 }
 
 void HallEncoderDriver::begin() {
+    // Giải phóng chức năng JTAG trên các chân GPIO tương ứng để có thể sử dụng như GPIO thường
+    gpio_reset_pin((gpio_num_t)_pinA);
+    gpio_reset_pin((gpio_num_t)_pinB);
+
     pinMode(_pinA, INPUT_PULLUP);
     pinMode(_pinB, INPUT_PULLUP);
 
