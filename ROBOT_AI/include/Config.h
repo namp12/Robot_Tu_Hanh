@@ -75,7 +75,7 @@ const uint8_t AUTO_RECOVERY_RETRY_LIMIT    = 3;    // Số lần thử Recovery 
 const unsigned long AUTO_IDLE_TIMEOUT_MS   = 30000;// Thời gian chờ tự động trong IDLE (ms)
 
 // --- Cấu hình Phản hồi Encoder & MPU6050 ---
-#define ENCODER_ENABLED            true    // Bật/Tắt phản hồi cân bằng tốc độ bánh bằng Encoder
+#define ENCODER_ENABLED            false    // Bật/Tắt phản hồi cân bằng tốc độ bánh bằng Encoder
 
 // --- Cấu hình Phát hiện Va Chạm (Collision Detection via MPU6050) ---
 #define AUTO_COLLISION_ENABLED     true    // Bật/Tắt phát hiện va chạm bằng MPU6050
