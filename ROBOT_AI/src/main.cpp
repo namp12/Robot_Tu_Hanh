@@ -156,7 +156,7 @@ void setup() {
 
         // Phát tín hiệu cảnh báo trên còi
         if (!is_sensor_isolated_mode()) {
-            MH_FMD_Update(frontDist);
+            MH_FMD_Update(frontDist, rearDist);
         }
 
         // Bắn sự kiện lên EventBus nếu có vật cản trước
