@@ -25,6 +25,8 @@
 // --- Thông số vật lý của Robot ---
 const float WHEEL_DIAMETER = 0.08; // Đường kính bánh xe (0.08m = 80mm)
 const float WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * PI; // Chu vi bánh xe
+const float PPR = 11.0f;           // Pulse Per Revolution của động cơ
+const float GEAR_RATIO = 30.0f;    // Tỷ số truyền động cơ
 
 // Kích thước hình học của xe (Dùng cho động học Mecanum)
 const float L_X = 0.15; // m (Khoảng cách từ tâm đến trục bánh xe theo chiều X)

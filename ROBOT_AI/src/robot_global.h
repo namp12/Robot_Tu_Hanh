@@ -51,6 +51,9 @@ extern const unsigned long MPU_INTERVAL;
 class MovementController;
 extern MovementController moveControl;
 
+class EncoderManager;
+extern EncoderManager& encoderManager;
+
 extern ROS2BridgeManager ros2Bridge;
 
 // Trạng thái vận hành của xe

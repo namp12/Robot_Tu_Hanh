@@ -28,6 +28,16 @@
 #define HC_REAR_TRIG  14
 #define HC_REAR_ECHO  15
 
+//================ ENCODER =================
+#define ENC_FL_A      41
+#define ENC_FL_B      42
+#define ENC_FR_A      39
+#define ENC_FR_B      40
+#define ENC_RL_A      37
+#define ENC_RL_B      38
+#define ENC_RR_A      35
+#define ENC_RR_B      36
+
 //================ BUZZER ==================
 #define MH_FMD_PIN    21
 

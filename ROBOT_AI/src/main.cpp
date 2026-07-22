@@ -9,6 +9,9 @@
 #include "Scheduler/Scheduler.h"
 #include "SensorManager/SensorManager.h"
 #include "EventBus/EventBus.h"
+#include "EncoderManager.h"
+
+EncoderManager& encoderManager = EncoderManager::getInstance();
 
 // =============================================================================
 // KHAI BÁO VÀ ĐỊNH NGHĨA CÁC ĐỐI TƯỢNG PHẦN CỨNG (GLOBAL INSTANCES)
@@ -89,6 +92,9 @@ void setup() {
     MH_FMD_Init();
     MH_FMD_SetThreshold(OBSTACLE_TRIGGER_CM);
 
+    Serial.println(F("[System] Khoi tao module Encoder..."));
+    encoderManager.begin();
+
     // 6. Khởi tạo các phân hệ chức năng
     Serial.println(F("[System] Khoi tao phan he dieu khien bang tay..."));
     clien_dieukhien_Init();
@@ -118,6 +124,15 @@ void setup() {
 
     // Task 20ms: Đo cảm biến, cập nhật SensorManager và kiểm tra khoảng cách an toàn
     mainScheduler.registerTask(20, []() {
+        // Cập nhật bộ đếm và trạng thái Encoder
+        encoderManager.update();
+        SensorManager::getInstance().publishEncoders(
+            encoderManager.getPulse(0),
+            encoderManager.getPulse(1),
+            encoderManager.getPulse(2),
+            encoderManager.getPulse(3)
+        );
+
         if (should_run_sensor_update()) {
             HC_SR04_Update();
         }
