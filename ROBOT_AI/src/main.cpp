@@ -170,8 +170,8 @@ void setup() {
         }
     });
 
-    // Task 200ms: Xuất thông tin chẩn đoán
-    mainScheduler.registerTask(200, []() {
+    // Task 10000ms (10s): Xuất thông tin chẩn đoán
+    mainScheduler.registerTask(10000, []() {
         const SensorData& data = SensorManager::getInstance().getSensorData();
         Serial.printf(
             "ESP32_DATA front=%.2f rear=%.2f ax=%.3f ay=%.3f az=%.3f gx=%.3f gy=%.3f gz=%.3f roll=%.2f pitch=%.2f yaw=%.2f\n",
