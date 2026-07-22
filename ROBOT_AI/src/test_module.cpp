@@ -129,11 +129,16 @@ bool should_run_sensor_update() {
     return (activeTestModule == TEST_SENSOR_HC_SR04 && runSensorUpdate);
 }
 
+bool is_sensor_isolated_mode() {
+    return (currentMainMode == MAIN_MODE_TEST && activeTestModule == TEST_SENSOR_HC_SR04);
+}
+
 void test_module_Init() {
-    Serial.println(F("Vui lòng chọn chế độ hoạt động ban đầu bằng cách gõ '1', '2' hoặc '3' rồi nhấn Enter:"));
+    Serial.println(F("Vui lòng chọn chế độ hoạt động ban đầu bằng cách gõ '1', '2', '3' hoặc '4' rồi nhấn Enter:"));
     Serial.println(F("  [1] Chế độ 1: Người dùng điều khiển bằng tay (Manual Mode)"));
     Serial.println(F("  [2] Chế độ 2: Xe chạy tự động tránh vật cản (Auto Mode)"));
     Serial.println(F("  [3] Chế độ 3: Chế độ kiểm tra chẩn đoán các Module (Module Test Mode)"));
+    Serial.println(F("  [4] Chế độ 4: Kiểm tra ĐỘC LẬP cảm biến siêu âm HC-SR04 (Isolated Sensor Mode)"));
     Serial.println(F("* Đang chờ lựa chọn (Mặc định tự chọn [1] sau 10 giây nếu không nhập)..."));
     Serial.println(F("-------------------------------------------------------"));
 
@@ -163,6 +168,15 @@ void test_module_Init() {
                 modeSelected = true;
                 Serial.println(F("\n📢 [System] Đã chọn Chế độ 3: CHẨN ĐOÁN & KIỂM TRA CÁC MODULE"));
                 break;
+            } else if (choice == "4") {
+                currentMainMode = MAIN_MODE_TEST;
+                currentMode = MODE_MANUAL;
+                activeTestModule = TEST_SENSOR_HC_SR04;
+                HC_SR04_SetDebug(true); // Bật in debug chi tiết của readSensor khi test cảm biến
+                modeSelected = true;
+                Serial.println(F("\n📢 [System] Đã chọn Chế độ 4: KIỂM TRA ĐỘC LẬP CẢM BIẾN SIÊU ÂM (ISOLATED HC-SR04)"));
+                printSensorTestHelp();
+                break;
             }
         }
         delay(10);
@@ -175,7 +189,9 @@ void test_module_Init() {
     }
 
     if (currentMainMode == MAIN_MODE_TEST) {
-        printModuleTestMenu();
+        if (activeTestModule == TEST_NONE) {
+            printModuleTestMenu();
+        }
     } else {
         printHelp();
     }
@@ -196,6 +212,19 @@ void test_module_Update() {
             }
         } else {
             mainInputString += c;
+        }
+    }
+
+    // Tự động in kết quả siêu âm cách biệt mỗi 1000ms khi ở chế độ cô lập
+    static unsigned long lastIsolatedPrint = 0;
+    if (activeTestModule == TEST_SENSOR_HC_SR04 && runSensorUpdate) {
+        unsigned long now = millis();
+        if (now - lastIsolatedPrint >= 1000) {
+            lastIsolatedPrint = now;
+            float f = HC_SR04_GetFrontDistance();
+            float r = HC_SR04_GetRearDistance();
+            Serial.printf("✨ [Isolated Sensor] Front: %.1f cm | Rear: %.1f cm (Front: %s | Rear: %s)\n",
+                          f, r, HC_SR04_FrontOnline() ? "ONLINE" : "OFFLINE", HC_SR04_RearOnline() ? "ONLINE" : "OFFLINE");
         }
     }
 }

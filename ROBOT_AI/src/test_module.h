@@ -30,4 +30,9 @@ bool is_in_test_mode();
  */
 bool should_run_sensor_update();
 
+/**
+ * @brief Kiểm tra xem hệ thống có đang ở chế độ kiểm tra siêu âm cô lập hay không.
+ */
+bool is_sensor_isolated_mode();
+
 #endif // TEST_MODULE_H

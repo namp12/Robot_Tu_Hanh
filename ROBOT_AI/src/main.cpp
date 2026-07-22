@@ -141,7 +141,7 @@ void setup() {
             HC_SR04_Update();
         }
 
-        if (mpuOk) {
+        if (mpuOk && !is_sensor_isolated_mode()) {
             mpu.update();
             SensorManager::getInstance().publishIMU(
                 mpu.getRoll(), mpu.getPitch(), mpu.getYaw(),
@@ -155,7 +155,9 @@ void setup() {
         SensorManager::getInstance().publishUltrasonic(frontDist, rearDist);
 
         // Phát tín hiệu cảnh báo trên còi
-        MH_FMD_Update(frontDist);
+        if (!is_sensor_isolated_mode()) {
+            MH_FMD_Update(frontDist);
+        }
 
         // Bắn sự kiện lên EventBus nếu có vật cản trước
         if (frontDist > 0.0f && frontDist < OBSTACLE_TRIGGER_CM && !bypassSensorCheck) {
@@ -176,12 +178,14 @@ void setup() {
 
     // Task 10000ms (10s): Xuất thông tin chẩn đoán
     mainScheduler.registerTask(10000, []() {
-        const SensorData& data = SensorManager::getInstance().getSensorData();
-        Serial.printf(
-            "ESP32_DATA front=%.2f rear=%.2f ax=%.3f ay=%.3f az=%.3f gx=%.3f gy=%.3f gz=%.3f roll=%.2f pitch=%.2f yaw=%.2f\n",
-            data.front_distance, data.rear_distance, data.accel_x, data.accel_y, data.accel_z,
-            data.gyro_x, data.gyro_y, data.gyro_z,
-            data.roll, data.pitch, data.yaw);
+        if (!is_sensor_isolated_mode()) {
+            const SensorData& data = SensorManager::getInstance().getSensorData();
+            Serial.printf(
+                "ESP32_DATA front=%.2f rear=%.2f ax=%.3f ay=%.3f az=%.3f gx=%.3f gy=%.3f gz=%.3f roll=%.2f pitch=%.2f yaw=%.2f\n",
+                data.front_distance, data.rear_distance, data.accel_x, data.accel_y, data.accel_z,
+                data.gyro_x, data.gyro_y, data.gyro_z,
+                data.roll, data.pitch, data.yaw);
+        }
     });
 
     Serial.println(F("=== HỆ THỐNG SẴN SÀNG ==="));
