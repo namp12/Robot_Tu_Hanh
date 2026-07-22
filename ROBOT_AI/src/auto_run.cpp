@@ -7,6 +7,9 @@
 
 #include "robot_global.h"
 #include "Config.h"
+#include <unordered_map>
+#include <functional>
+#include "MovementController.h"
 
 // =============================================================================
 // BIẾN NỘI BỘ QUẢN LÝ STATE MACHINE VÀ NÂNG CAO
@@ -254,50 +257,101 @@ void auto_run_ResetState() {
 /**
  * @brief Mở rộng hỗ trợ bộ lệnh đầy đủ cho Raspberry Pi.
  */
-void auto_run_ProcessPiCommand(const String& cmd) {
-    String c = cmd;
-    c.trim();
-    c.toLowerCase();
+struct PiCommand {
+    String actionName;
+    std::function<void(const String&)> handler;
+};
 
-    Serial.printf("🤖 [PI INTERFACE] Nhận lệnh từ Raspberry Pi: '%s'\n", c.c_str());
+static std::unordered_map<std::string, PiCommand> piCommandRegistry;
 
-    if (c == "forward" || c == "run") {
+static void initPiCommandRegistry() {
+    if (!piCommandRegistry.empty()) return;
+
+    piCommandRegistry["forward"] = {"Forward", [](const String&) {
         switchAutoState(AUTO_FORWARD);
-    } else if (c == "backward") {
+    }};
+    piCommandRegistry["run"] = {"Forward", [](const String&) {
+        switchAutoState(AUTO_FORWARD);
+    }};
+    piCommandRegistry["backward"] = {"Backward", [](const String&) {
         switchAutoState(AUTO_BACKWARD);
-    } else if (c == "left" || c == "rotate_left") {
+    }};
+    piCommandRegistry["left"] = {"Rotate Left", [](const String&) {
         desiredTurnAngle = 90.0f;
         switchAutoState(AUTO_TURN_LEFT);
-    } else if (c == "right" || c == "rotate_right") {
+    }};
+    piCommandRegistry["rotate_left"] = {"Rotate Left", [](const String&) {
+        desiredTurnAngle = 90.0f;
+        switchAutoState(AUTO_TURN_LEFT);
+    }};
+    piCommandRegistry["right"] = {"Rotate Right", [](const String&) {
         desiredTurnAngle = 90.0f;
         switchAutoState(AUTO_TURN_RIGHT);
-    } else if (c == "stop" || c == "idle" || c == "pause") {
+    }};
+    piCommandRegistry["rotate_right"] = {"Rotate Right", [](const String&) {
+        desiredTurnAngle = 90.0f;
+        switchAutoState(AUTO_TURN_RIGHT);
+    }};
+    piCommandRegistry["stop"] = {"Stop", [](const String&) {
         switchAutoState(AUTO_IDLE);
-    } else if (c == "recover") {
+    }};
+    piCommandRegistry["idle"] = {"Stop", [](const String&) {
+        switchAutoState(AUTO_IDLE);
+    }};
+    piCommandRegistry["pause"] = {"Stop", [](const String&) {
+        switchAutoState(AUTO_IDLE);
+    }};
+    piCommandRegistry["recover"] = {"Recover", [](const String&) {
         recoveryStep = 0;
         switchAutoState(AUTO_RECOVER);
-    } else if (c.startsWith("set_speed")) {
-        int spaceIdx = c.indexOf(' ');
-        if (spaceIdx != -1) {
-            piCustomSpeed = constrain(c.substring(spaceIdx + 1).toInt(), 0, 255);
-            Serial.printf("   [PI INTERFACE] Đặt tốc độ mặc định Auto = %d PWM\n", piCustomSpeed);
-        }
-    } else if (c.startsWith("set_target_angle")) {
-        int spaceIdx = c.indexOf(' ');
-        if (spaceIdx != -1) {
-            targetYaw = c.substring(spaceIdx + 1).toFloat();
-            Serial.printf("   [PI INTERFACE] Đặt góc Yaw mục tiêu = %.1f deg\n", targetYaw);
-        }
-    } else if (c.startsWith("turn_left")) {
-        int spaceIdx = c.indexOf(' ');
-        desiredTurnAngle = (spaceIdx != -1) ? c.substring(spaceIdx + 1).toFloat() : 90.0f;
+    }};
+    piCommandRegistry["set_speed"] = {"Set Speed", [](const String& param) {
+        piCustomSpeed = constrain(param.toInt(), 0, 255);
+        moveControl.setSpeed(piCustomSpeed);
+        Serial.printf("   [PI INTERFACE] Đặt tốc độ mặc định Auto = %d PWM\n", piCustomSpeed);
+    }};
+    piCommandRegistry["set_target_angle"] = {"Set Target Angle", [](const String& param) {
+        targetYaw = param.toFloat();
+        moveControl.setTargetAngle(targetYaw);
+        Serial.printf("   [PI INTERFACE] Đặt góc Yaw mục tiêu = %.1f deg\n", targetYaw);
+    }};
+    piCommandRegistry["turn_left"] = {"Rotate Left By Angle", [](const String& param) {
+        desiredTurnAngle = param.toFloat();
         if (desiredTurnAngle <= 0) desiredTurnAngle = 90.0f;
         switchAutoState(AUTO_TURN_LEFT);
-    } else if (c.startsWith("turn_right")) {
-        int spaceIdx = c.indexOf(' ');
-        desiredTurnAngle = (spaceIdx != -1) ? c.substring(spaceIdx + 1).toFloat() : 90.0f;
+    }};
+    piCommandRegistry["turn_right"] = {"Rotate Right By Angle", [](const String& param) {
+        desiredTurnAngle = param.toFloat();
         if (desiredTurnAngle <= 0) desiredTurnAngle = 90.0f;
         switchAutoState(AUTO_TURN_RIGHT);
+    }};
+}
+
+void auto_run_ProcessPiCommand(const String& cmd) {
+    String origCmd = cmd;
+    origCmd.trim();
+    String c = origCmd;
+    c.toLowerCase();
+
+    int spaceIdx = c.indexOf(' ');
+    String action = (spaceIdx == -1) ? c : c.substring(0, spaceIdx);
+    String param = (spaceIdx == -1) ? "" : origCmd.substring(spaceIdx + 1);
+    param.trim();
+
+    initPiCommandRegistry();
+
+    std::string actionStr = std::string(action.c_str());
+    auto it = piCommandRegistry.find(actionStr);
+    if (it != piCommandRegistry.end()) {
+        // Output Serial Log in required format
+        Serial.println(F("=========================="));
+        Serial.print(F("RX: "));
+        Serial.println(origCmd);
+        Serial.print(F("ACTION: "));
+        Serial.println(it->second.actionName);
+        Serial.println(F("=========================="));
+
+        it->second.handler(param);
     } else {
         Serial.println(F("⚠️ [PI INTERFACE] Lệnh không hợp lệ! Hỗ trợ: forward, backward, left, right, rotate_left, rotate_right, stop, recover, set_speed <val>, set_target_angle <val>"));
     }

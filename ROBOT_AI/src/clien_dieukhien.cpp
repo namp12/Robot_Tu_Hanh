@@ -5,6 +5,9 @@
 
 #include "robot_global.h"
 #include "PinMap.h"
+#include <unordered_map>
+#include <functional>
+#include "MovementController.h"
 
 // =============================================================================
 // BIẾN NỘI BỘ (INTERNAL VARIABLES)
@@ -201,183 +204,169 @@ static void checkSerial() {
     }
 }
 
-void processCommand(String cmd) {
-    cmd.trim();
-    cmd.toLowerCase();
+struct ManualCommand {
+    String actionName;
+    std::function<void(int, const String&)> handler;
+};
 
-    // 1. Tách chuỗi lệnh dựa trên dấu cách đầu tiên để lấy action và speed
-    int spaceIndex = cmd.indexOf(' ');
-    String action = (spaceIndex == -1) ? cmd : cmd.substring(0, spaceIndex);
-    int speed = (spaceIndex == -1)
-                    ? 150 // Tốc độ mặc định nếu không khai báo
-                    : constrain(cmd.substring(spaceIndex + 1).toInt(), 0, 255);
+static std::unordered_map<std::string, ManualCommand> commandRegistry;
 
-    // 2. Phân tích bí danh phím tắt nhanh (Alias Mapping)
-    if (action == "w") { action = "tien"; }
-    else if (action == "s") { action = "lui"; }
-    else if (action == "a") { action = "trai"; }
-    else if (action == "d") { action = "phai"; }
-    else if (action == "q") { action = "xoay_trai"; }
-    else if (action == "e") { action = "xoay_phai"; }
-    else if (action == "x") { action = "dung"; speed = 0; }
-    else if (action == "h") { action = "help"; }
-    else if (action == "m" || action == "man" || action == "manual" || action == "1") { action = "mode_manual"; }
-    else if (action == "run" || action == "auto" || action == "2") { action = "mode_auto"; }
-    else if (action == "ros2" || action == "mode_ros2" || action == "4") { action = "mode_ros2"; }
-    else if (action == "st" || action == "status") { action = "print_status"; }
-    else if (action == "bp" || action == "bypass") { action = "toggle_bypass"; }
+static void initCommandRegistry() {
+    if (!commandRegistry.empty()) return;
 
-    Serial.print(F(">> Nhan lenh: "));
-    if (spaceIndex != -1 && action != "mode_manual" && action != "mode_auto" && action != "help" && action != "dung") {
-        Serial.printf("%s %d\n", action.c_str(), speed);
-    } else {
-        Serial.println(action);
-    }
-
-    // 3. Thực thi hành vi lệnh tương ứng
-    if (action == "tien") {
+    commandRegistry["tien"] = {"Forward", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "tien";
         currentSpeed = speed;
-        car.forward(speed);
+        moveControl.forward(speed);
         Serial.printf("   TIEN | speed=%d\n", speed);
+    }};
 
-    } else if (action == "lui") {
+    commandRegistry["lui"] = {"Backward", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "lui";
         currentSpeed = speed;
-        car.backward(speed);
+        moveControl.backward(speed);
         Serial.printf("   LUI | speed=%d\n", speed);
+    }};
 
-    } else if (action == "trai") {
+    commandRegistry["trai"] = {"Strafe Left", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "trai";
         currentSpeed = speed;
-        car.strafeLeft(speed);
+        moveControl.strafeLeft(speed);
         Serial.printf("   TRAI | speed=%d\n", speed);
+    }};
 
-    } else if (action == "phai") {
+    commandRegistry["phai"] = {"Strafe Right", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "phai";
         currentSpeed = speed;
-        car.strafeRight(speed);
+        moveControl.strafeRight(speed);
         Serial.printf("   PHAI | speed=%d\n", speed);
+    }};
 
-    } else if (action == "xoay_trai") {
+    commandRegistry["xoay_trai"] = {"Rotate Left", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "xoay_trai";
         currentSpeed = speed;
-        car.rotateLeft(speed);
+        moveControl.rotateLeft(speed);
         Serial.printf("   XOAY_TRAI | speed=%d\n", speed);
+    }};
 
-    } else if (action == "xoay_phai") {
+    commandRegistry["xoay_phai"] = {"Rotate Right", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "xoay_phai";
         currentSpeed = speed;
-        car.rotateRight(speed);
+        moveControl.rotateRight(speed);
         Serial.printf("   XOAY_PHAI | speed=%d\n", speed);
+    }};
 
-    } else if (action == "cheo_tt") {
+    commandRegistry["cheo_tt"] = {"Diagonal Front Left", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "cheo_tt";
         currentSpeed = speed;
-        car.diagonalFrontLeft(speed);
+        moveControl.diagonalFrontLeft(speed);
         Serial.printf("   CHEO_TT | speed=%d\n", speed);
+    }};
 
-    } else if (action == "cheo_tp") {
+    commandRegistry["cheo_tp"] = {"Diagonal Front Right", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "cheo_tp";
         currentSpeed = speed;
-        car.diagonalFrontRight(speed);
+        moveControl.diagonalFrontRight(speed);
         Serial.printf("   CHEO_TP | speed=%d\n", speed);
+    }};
 
-    } else if (action == "cheo_st") {
+    commandRegistry["cheo_st"] = {"Diagonal Back Left", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "cheo_st";
         currentSpeed = speed;
-        car.diagonalBackLeft(speed);
+        moveControl.diagonalBackLeft(speed);
         Serial.printf("   CHEO_ST | speed=%d\n", speed);
+    }};
 
-    } else if (action == "cheo_sp") {
+    commandRegistry["cheo_sp"] = {"Diagonal Back Right", [](int speed, const String&) {
         if (currentMode == MODE_AUTO) {
             Serial.println(F("   [Lỗi] Đang ở chế độ AUTO, hãy chuyển sang chế độ MANUAL trước."));
             return;
         }
         currentMoveDir = "cheo_sp";
         currentSpeed = speed;
-        car.diagonalBackRight(speed);
+        moveControl.diagonalBackRight(speed);
         Serial.printf("   CHEO_SP | speed=%d\n", speed);
+    }};
 
-    } else if (action == "dung") {
+    commandRegistry["dung"] = {"Stop", [](int, const String&) {
         currentMoveDir = "dung";
         currentSpeed = 0;
         isAvoidanceActive = false;
-        car.stop();
+        moveControl.stop();
         if (currentMode == MODE_AUTO) {
             currentMode = MODE_MANUAL;
             Serial.println(F("   [AUTO] Đã dừng xe và tự động thoát về chế độ MANUAL."));
         }
         Serial.println(F("   DỪNG XE"));
+    }};
 
-    } else if (action == "mode_manual") {
+    commandRegistry["mode_manual"] = {"Set Mode Manual", [](int, const String&) {
         currentMode = MODE_MANUAL;
         isAvoidanceActive = false;
         currentMoveDir = "dung";
         currentSpeed = 0;
-        car.stop();
+        moveControl.stop();
         Serial.println(F("   [System] Đã chuyển sang chế độ MANUAL (THỦ CÔNG). Đã dừng xe."));
+    }};
 
-    } else if (action == "mode_auto") {
+    commandRegistry["mode_auto"] = {"Set Mode Auto", [](int, const String&) {
         currentMode = MODE_AUTO;
         isAvoidanceActive = false;
         autoModeStartTime = millis();
         auto_run_ResetState();
         Serial.println(F("   [System] Đã chuyển sang chế độ AUTO. Đang đồng bộ cảm biến trong 1.5s..."));
+    }};
 
-    } else if (action == "mode_ros2") {
+    commandRegistry["mode_ros2"] = {"Set Mode ROS2", [](int, const String&) {
         currentMode = MODE_ROS2;
         isAvoidanceActive = false;
         currentMoveDir = "dung";
         currentSpeed = 0;
-        car.stop();
+        moveControl.stop();
         Serial.println(F("   [System] Đã chuyển sang chế độ ROS2 MODE (MÁY TÍNH LÁI)."));
+    }};
 
-    } else if (action == "pi") {
-        if (spaceIndex != -1) {
-            String piCmd = cmd.substring(spaceIndex + 1);
-            auto_run_ProcessPiCommand(piCmd);
-        } else {
-            Serial.println(F("   [PI INTERFACE] Vui lòng nhập lệnh (VD: pi forward, pi turn_left 90, pi stop)"));
-        }
+    commandRegistry["pi"] = {"Raspberry Pi Command Interface", [](int, const String& rawParam) {
+        auto_run_ProcessPiCommand(rawParam);
+    }};
 
-    } else if (action == "mpu") {
+    commandRegistry["mpu"] = {"Print IMU Data", [](int, const String&) {
         if (!mpuOk) {
             Serial.println(F("   MPU6050 chưa khởi tạo! Kiểm tra kết nối I2C."));
         } else {
@@ -392,28 +381,85 @@ void processCommand(String cmd) {
             Serial.printf("  Nhiệt độ: %.2f C\n", mpu.getTemperature());
             Serial.println(F("---------------------------"));
         }
+    }};
 
-    } else if (action == "reset_goc") {
+    commandRegistry["reset_goc"] = {"Reset Yaw Angle", [](int, const String&) {
         mpu.resetAngle();
         Serial.println(F("   Đã reset góc Roll/Pitch/Yaw về 0"));
+    }};
 
-    } else if (action == "debug") {
+    commandRegistry["debug"] = {"Print Motor Debug", [](int, const String&) {
         printMotorDebug();
+    }};
 
-    } else if (action == "test_motor") {
+    commandRegistry["test_motor"] = {"Run Motor Test Sequence", [](int, const String&) {
         startMotorTest();
+    }};
 
-    } else if (action == "print_status") {
+    commandRegistry["print_status"] = {"Print Status Report", [](int, const String&) {
         printStatus();
+    }};
 
-    } else if (action == "toggle_bypass") {
+    commandRegistry["toggle_bypass"] = {"Toggle Bypass Sensor", [](int, const String&) {
         bypassSensorCheck = !bypassSensorCheck;
         Serial.printf("   [System] Tự động bỏ qua lỗi cảm biến (Bypass Sensor Check): %s\n",
                       bypassSensorCheck ? "ĐANG BẬT (ON)" : "ĐANG TẮT (OFF)");
+    }};
 
-    } else if (action == "help") {
+    commandRegistry["help"] = {"Print Help Menu", [](int, const String&) {
         printHelp();
+    }};
+}
 
+static std::string getNormalizedAction(const std::string& rawAction) {
+    static std::unordered_map<std::string, std::string> aliasMap = {
+        {"w", "tien"}, {"s", "lui"}, {"a", "trai"}, {"d", "phai"},
+        {"q", "xoay_trai"}, {"e", "xoay_phai"}, {"x", "dung"},
+        {"h", "help"},
+        {"m", "mode_manual"}, {"man", "mode_manual"}, {"manual", "mode_manual"}, {"1", "mode_manual"},
+        {"run", "mode_auto"}, {"auto", "mode_auto"}, {"2", "mode_auto"},
+        {"ros2", "mode_ros2"}, {"mode_ros2", "mode_ros2"}, {"4", "mode_ros2"},
+        {"st", "print_status"}, {"status", "print_status"},
+        {"bp", "toggle_bypass"}, {"bypass", "toggle_bypass"}
+    };
+    auto it = aliasMap.find(rawAction);
+    if (it != aliasMap.end()) {
+        return it->second;
+    }
+    return rawAction;
+}
+
+void processCommand(String cmd) {
+    cmd.trim();
+    String origCmd = cmd;
+    cmd.toLowerCase();
+
+    int spaceIndex = cmd.indexOf(' ');
+    String action = (spaceIndex == -1) ? cmd : cmd.substring(0, spaceIndex);
+    int speed = (spaceIndex == -1)
+                    ? 150 
+                    : constrain(cmd.substring(spaceIndex + 1).toInt(), 0, 255);
+
+    std::string actionStr = std::string(action.c_str());
+    std::string normalizedAction = getNormalizedAction(actionStr);
+    initCommandRegistry();
+
+    auto it = commandRegistry.find(normalizedAction);
+    if (it != commandRegistry.end()) {
+        // Output Serial Log in required format
+        Serial.println(F("=========================="));
+        Serial.print(F("RX: "));
+        Serial.println(origCmd);
+        Serial.print(F("ACTION: "));
+        Serial.println(it->second.actionName);
+        Serial.println(F("=========================="));
+
+        String rawParam = "";
+        if (spaceIndex != -1) {
+            rawParam = origCmd.substring(spaceIndex + 1);
+            rawParam.trim();
+        }
+        it->second.handler(speed, rawParam);
     } else {
         Serial.println(F("   ERR: Lệnh không hợp lệ. Gõ 'help' để xem bảng lệnh."));
     }

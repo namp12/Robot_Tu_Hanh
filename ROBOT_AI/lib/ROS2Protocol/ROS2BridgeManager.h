@@ -1,10 +1,3 @@
-/**
- * @file ROS2BridgeManager.h
- * @brief Manager quản lý truyền thông 2 chiều giữa ESP32 và Raspberry Pi (ROS2).
- *        Điều khiển nhận/gửi gói nhị phân, quy đổi cmd_vel sang PWM 4 bánh,
- *        và tích hợp Hardware Safety Watchdog chống trôi xe.
- */
-
 #ifndef ROS2_BRIDGE_MANAGER_H
 #define ROS2_BRIDGE_MANAGER_H
 
@@ -12,8 +5,9 @@
 #include "PacketBuilder.h"
 #include "PacketParser.h"
 #include "Kinematics.h"
+#include "ICommInterface.h"
 
-class ROS2BridgeManager {
+class ROS2BridgeManager : public ICommInterface {
 private:
     HardwareSerial* _serial;
     PacketParser _parser;
@@ -34,23 +28,25 @@ private:
     float _cmdVy;
     float _cmdW;
 
+    // Command cache for interface query
+    MotionCommand _latestCmd;
+    bool _hasNewCmd;
+
 public:
     ROS2BridgeManager();
 
-    /**
-     * @brief Khởi tạo Bridge Manager và tốc độ baudrate
-     * @param serialPointer Con trỏ tới Serial kết nối Raspberry Pi (Mặc định &Serial)
-     * @param telemetryRateHz Tần số gửi telemetry về Pi (Hz), mặc định 50Hz (20ms)
-     */
-    void begin(HardwareSerial* serialPointer = &Serial, uint16_t telemetryRateHz = 50);
+    // Implement ICommInterface
+    void begin() override { begin(&Serial, 50); }
+    void update() override;
+    bool sendTelemetry(const TelemetryData& data) override;
+    bool receiveCommand(MotionCommand& cmd) override;
+    void publishStatus() override;
+
+    // Overloaded begin for backward compatibility
+    void begin(HardwareSerial* serialPointer, uint16_t telemetryRateHz = 50);
 
     /**
-     * @brief Cập nhật luồng xử lý không block CPU (Gọi liên tục trong loop chính)
-     */
-    void update();
-
-    /**
-     * @brief Gửi gói tin Telemetry ngay lập tức về Raspberry Pi
+     * @brief Gửi gói tin Telemetry ngay lập tức về Raspberry Pi (Tương thích ngược)
      */
     void sendTelemetry();
 

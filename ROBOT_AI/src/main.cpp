@@ -5,6 +5,10 @@
 
 #include "robot_global.h"
 #include "test_module.h"
+#include "MovementController.h"
+#include "Scheduler/Scheduler.h"
+#include "SensorManager/SensorManager.h"
+#include "EventBus/EventBus.h"
 
 // =============================================================================
 // KHAI BÁO VÀ ĐỊNH NGHĨA CÁC ĐỐI TƯỢNG PHẦN CỨNG (GLOBAL INSTANCES)
@@ -16,15 +20,15 @@ BTS7960 motorRL(MOTOR_RL_RPWM, MOTOR_RL_LPWM);
 BTS7960 motorRR(MOTOR_RR_RPWM, MOTOR_RR_LPWM);
 Motor car(motorFL, motorFR, motorRL, motorRR);
 
+MovementController moveControl(car);
+
 MPU6050Sensor mpu;
 bool mpuOk = false;
 unsigned long lastMpuUpdate = 0;
 const unsigned long MPU_INTERVAL = 20;
 
 ROS2BridgeManager ros2Bridge;
-// Publish data for Raspberry Pi / ROS2 parser over Serial USB
-static unsigned long lastSensorPublishTime = 0;
-const unsigned long SENSOR_PUBLISH_INTERVAL_MS = 200;
+Scheduler mainScheduler;
 
 // Khai báo và định nghĩa các biến trạng thái vận hành của xe
 OperatingMode currentMode = MODE_MANUAL;
@@ -96,6 +100,71 @@ void setup() {
     Serial.println(F("[System] Khoi tao giao truyen thong ROS2 (50Hz)..."));
     ros2Bridge.begin(&Serial, 50);
 
+    // 7. Đăng ký các task tuần hoàn cho Scheduler
+    // Task 1ms: Cập nhật luồng chẩn đoán
+    mainScheduler.registerTask(1, []() {
+        test_module_Update();
+    });
+
+    // Task 10ms: Điều khiển chuyển động và chu kỳ test motor
+    mainScheduler.registerTask(10, []() {
+        if (!is_in_test_mode()) {
+            moveControl.update();
+            updateMotorTest();
+        } else {
+            updateMotorTest();
+        }
+    });
+
+    // Task 20ms: Đo cảm biến, cập nhật SensorManager và kiểm tra khoảng cách an toàn
+    mainScheduler.registerTask(20, []() {
+        if (should_run_sensor_update()) {
+            HC_SR04_Update();
+        }
+
+        if (mpuOk) {
+            mpu.update();
+            SensorManager::getInstance().publishIMU(
+                mpu.getRoll(), mpu.getPitch(), mpu.getYaw(),
+                mpu.getAccelX(), mpu.getAccelY(), mpu.getAccelZ(),
+                mpu.getGyroX(), mpu.getGyroY(), mpu.getGyroZ()
+            );
+        }
+
+        float frontDist = HC_SR04_GetFrontDistance();
+        float rearDist = HC_SR04_GetRearDistance();
+        SensorManager::getInstance().publishUltrasonic(frontDist, rearDist);
+
+        // Phát tín hiệu cảnh báo trên còi
+        MH_FMD_Update(frontDist);
+
+        // Bắn sự kiện lên EventBus nếu có vật cản trước
+        if (frontDist > 0.0f && frontDist < OBSTACLE_TRIGGER_CM && !bypassSensorCheck) {
+            Event obstacleEvent;
+            obstacleEvent.type = EVENT_OBSTACLE_DETECTED;
+            obstacleEvent.timestamp = millis();
+            obstacleEvent.data.distance = frontDist;
+            EventBus::getInstance().publish(obstacleEvent);
+        }
+    });
+
+    // Task 50ms: Chạy chế độ tự động tránh vật cản
+    mainScheduler.registerTask(50, []() {
+        if (!is_in_test_mode()) {
+            auto_run_Update();
+        }
+    });
+
+    // Task 200ms: Xuất thông tin chẩn đoán
+    mainScheduler.registerTask(200, []() {
+        const SensorData& data = SensorManager::getInstance().getSensorData();
+        Serial.printf(
+            "ESP32_DATA front=%.2f rear=%.2f ax=%.3f ay=%.3f az=%.3f gx=%.3f gy=%.3f gz=%.3f roll=%.2f pitch=%.2f yaw=%.2f\n",
+            data.front_distance, data.rear_distance, data.accel_x, data.accel_y, data.accel_z,
+            data.gyro_x, data.gyro_y, data.gyro_z,
+            data.roll, data.pitch, data.yaw);
+    });
+
     Serial.println(F("=== HỆ THỐNG SẴN SÀNG ==="));
     Serial.println(F("---------------------------------------------"));
     
@@ -107,73 +176,9 @@ void setup() {
 // LOOP
 // =============================================================================
 void loop() {
-    // 1. Cập nhật trạng thái cảm biến siêu âm (nếu không bị tạm dừng bởi test module)
-    if (should_run_sensor_update()) {
-        HC_SR04_Update();
-    }
-
-    // 2. Cập nhật góc IMU MPU6050 định kỳ không block
-    if (mpuOk) {
-        unsigned long now = millis();
-        if (now - lastMpuUpdate >= MPU_INTERVAL) {
-            mpu.update();
-            lastMpuUpdate = now;
-        }
-    }
-
-    // 3. Cập nhật phân hệ test module (đọc Serial và xử lý lệnh test)
-    test_module_Update();
-
-    // 3.1. Xuất dữ liệu cảm biến/IMU định kỳ cho Raspberry Pi / ROS2 đọc
-    unsigned long nowPublish = millis();
-    if (nowPublish - lastSensorPublishTime >= SENSOR_PUBLISH_INTERVAL_MS) {
-        lastSensorPublishTime = nowPublish;
-        float frontDist = HC_SR04_GetFrontDistance();
-        float accelX = 0.0f, accelY = 0.0f, accelZ = 0.0f;
-        float gyroX = 0.0f, gyroY = 0.0f, gyroZ = 0.0f;
-        float roll = 0.0f, pitch = 0.0f, yaw = 0.0f;
-
-        if (mpuOk) {
-            accelX = mpu.getAccelX();
-            accelY = mpu.getAccelY();
-            accelZ = mpu.getAccelZ();
-            gyroX = mpu.getGyroX();
-            gyroY = mpu.getGyroY();
-            gyroZ = mpu.getGyroZ();
-            roll = mpu.getRoll();
-            pitch = mpu.getPitch();
-            yaw = mpu.getYaw();
-        }
-
-        Serial.printf(
-            "ESP32_DATA front=%.2f ax=%.3f ay=%.3f az=%.3f gx=%.3f gy=%.3f gz=%.3f roll=%.2f pitch=%.2f yaw=%.2f\n",
-            frontDist, accelX, accelY, accelZ,
-            gyroX, gyroY, gyroZ,
-            roll, pitch, yaw);
-    }
-
-    // 4. Cập nhật phân hệ giao tiếp 2 chiều ROS2 (nhận cmd_vel và bắn Telemetry 50Hz)
+    // Luôn nhận Serial từ RPi nhanh nhất có thể để tránh tràn bộ đệm UART
     ros2Bridge.update();
 
-    // 5. Cập nhật các luồng hoạt động chính dựa vào trạng thái chế độ
-    float frontDist = HC_SR04_GetFrontDistance();
-
-    if (!is_in_test_mode()) {
-        // Trong chế độ hoạt động bình thường (Manual hoặc Auto):
-        // Cập nhật còi cảnh báo dựa trên khoảng cách trước
-        MH_FMD_Update(frontDist);
-
-        // Cập nhật phân hệ chạy tự động tránh vật cản (auto_run.cpp)
-        auto_run_Update();
-
-        // Cập nhật tiến trình chạy thử động cơ (nếu có cuộc gọi từ phím tắt)
-        updateMotorTest();
-    } else {
-        // Trong chế độ kiểm tra module:
-        // Cập nhật còi cảnh báo để xử lý âm báo test/beep thủ công
-        MH_FMD_Update(frontDist);
-
-        // Cập nhật tiến trình test động cơ (cho phép test_motor chạy bình thường)
-        updateMotorTest();
-    }
+    // Thực thi cyclic task
+    mainScheduler.tick();
 }

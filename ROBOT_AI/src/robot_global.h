@@ -48,6 +48,9 @@ extern bool mpuOk;
 extern unsigned long lastMpuUpdate;
 extern const unsigned long MPU_INTERVAL;
 
+class MovementController;
+extern MovementController moveControl;
+
 extern ROS2BridgeManager ros2Bridge;
 
 // Trạng thái vận hành của xe

@@ -1,5 +1,7 @@
 #include "ROS2BridgeManager.h"
 #include "robot_global.h"
+#include "SensorManager/SensorManager.h"
+#include "MovementController.h"
 
 ROS2BridgeManager::ROS2BridgeManager() {
     _serial = &Serial;
@@ -11,6 +13,7 @@ ROS2BridgeManager::ROS2BridgeManager() {
     _cmdVx = 0.0f;
     _cmdVy = 0.0f;
     _cmdW = 0.0f;
+    _hasNewCmd = false;
 }
 
 void ROS2BridgeManager::begin(HardwareSerial* serialPointer, uint16_t telemetryRateHz) {
@@ -28,14 +31,13 @@ void ROS2BridgeManager::begin(HardwareSerial* serialPointer, uint16_t telemetryR
 void ROS2BridgeManager::update() {
     unsigned long now = millis();
 
-    // 1. Đọc và giải mã dữ liệu Serial từ Raspberry Pi
+    // 1. Read & decode Pi Serial
     while (_serial->available()) {
         uint8_t byteIn = (uint8_t)_serial->read();
         uint8_t msgId = 0;
         uint8_t payloadLen = 0;
 
         if (_parser.parseByte(byteIn, msgId, _rxPayloadBuffer, payloadLen)) {
-            // Giải mã gói tin thành công
             switch (msgId) {
                 case MSG_ID_CMD_VEL: {
                     if (payloadLen == sizeof(CmdVelPayload)) {
@@ -46,19 +48,30 @@ void ROS2BridgeManager::update() {
                         _cmdW  = cmd.angular_z;
                         _lastCmdVelTime = now;
 
-                        // Nếu xe đang ở MODE_ROS2, thực thi lệnh vận tốc ra bánh
+                        // Convert geometry_msgs/Twist to standard MotionCommand
+                        _latestCmd.timestamp = now;
+                        _latestCmd.vx = _cmdVx;
+                        _latestCmd.vy = _cmdVy;
+                        _latestCmd.wz = _cmdW;
+                        _latestCmd.brake = false;
+                        _latestCmd.emergency_stop = _isEStopActive;
+                        
+                        if (abs(_cmdVx) < 0.001f && abs(_cmdVy) < 0.001f && abs(_cmdW) < 0.001f) {
+                            _latestCmd.type = MOTION_STOP;
+                            _latestCmd.speed = 0;
+                        } else {
+                            _latestCmd.type = MOTION_STRAFE;
+                            float velocity = sqrt(_cmdVx*_cmdVx + _cmdVy*_cmdVy);
+                            _latestCmd.speed = constrain((int)(velocity * 510.0f + abs(_cmdW) * 150.0f), 0, 255);
+                        }
+                        _latestCmd.acceleration = 1000;
+                        _hasNewCmd = true;
+
+                        // Execute cmd via MovementController if in MODE_ROS2
                         if (currentMode == MODE_ROS2 && !_isEStopActive) {
-                            // Quy đổi v_x, v_y (m/s) và omega (rad/s) sang PWM [-255, 255]
-                            // Giả định vận tốc tối đa 0.5 m/s tương ứng PWM 255
-                            float scaleVx = _cmdVx * 510.0f; // 0.5 m/s -> 255
-                            float scaleVy = _cmdVy * 510.0f;
-                            float scaleW  = _cmdW  * 150.0f; // 1.7 rad/s (~100 deg/s) -> 255
-
-                            WheelSpeeds speeds = _kinematics.getWheelSpeeds(scaleVx, scaleVy, scaleW);
-                            car.setAllMotor(speeds.fl, speeds.fr, speeds.rl, speeds.rr);
-
+                            moveControl.handleCommand(_latestCmd);
                             currentMoveDir = "ROS2 cmd_vel";
-                            currentSpeed = max(abs(speeds.fl), max(abs(speeds.fr), max(abs(speeds.rl), abs(speeds.rr))));
+                            currentSpeed = _latestCmd.speed;
                         }
                     }
                     break;
@@ -71,18 +84,18 @@ void ROS2BridgeManager::update() {
 
                         if (modePayload.target_mode == 0) {
                             currentMode = MODE_MANUAL;
-                            car.stop();
+                            moveControl.stop();
                             currentMoveDir = "dung (Manual via ROS2)";
                             currentSpeed = 0;
-                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yêu cầu chuyển sang MODE_MANUAL"));
+                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_MANUAL"));
                         } else if (modePayload.target_mode == 1) {
                             currentMode = MODE_AUTO;
                             autoModeStartTime = millis();
-                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yêu cầu chuyển sang MODE_AUTO"));
+                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_AUTO"));
                         } else if (modePayload.target_mode == 2) {
                             currentMode = MODE_ROS2;
                             _lastCmdVelTime = now;
-                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yêu cầu chuyển sang MODE_ROS2 (MÁY TÍNH LÁI)"));
+                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_ROS2 (MAY TINH LAI)"));
                         }
 
                         if (modePayload.e_stop == 1) {
@@ -96,83 +109,118 @@ void ROS2BridgeManager::update() {
 
                 case MSG_ID_RESET_GOC: {
                     mpu.resetAngle();
-                    Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yêu cầu reset góc Yaw MPU6050 về 0"));
+                    Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau reset goc Yaw MPU6050 ve 0"));
                     break;
                 }
             }
         }
     }
 
-    // 2. Kiểm tra Watchdog an toàn: Nếu đang ở MODE_ROS2 mà mất kết nối RPi > 500ms
+    // 2. Watchdog Safety Stop
     if (currentMode == MODE_ROS2 && !_isEStopActive) {
         if (now - _lastCmdVelTime > _watchdogTimeoutMs) {
-            car.stop();
-            currentMoveDir = "DỪNG KHẨN (SERIAL TIMEOUT)";
+            moveControl.stop();
+            currentMoveDir = "DUNG KHAN (SERIAL TIMEOUT)";
             currentSpeed = 0;
             static unsigned long lastWarnTime = 0;
             if (now - lastWarnTime > 2000) {
                 lastWarnTime = now;
-                Serial.println(F("⚠️ [ROS2 WATCHDOG] Mất tín hiệu cmd_vel quá 500ms! Đã tự động DỪNG XE khẩn cấp."));
+                Serial.println(F("⚠️ [ROS2 WATCHDOG] Mat tin hieu cmd_vel qua 500ms! Da tu dong DUNG XE khan cap."));
             }
         }
     }
 
-    // 3. Gửi gói tin Telemetry định kỳ về Raspberry Pi (50Hz = 20ms)
+    // 3. Publish Status / Send Telemetry at 50Hz
     if (now - _lastTelemetryTime >= _telemetryIntervalMs) {
         _lastTelemetryTime = now;
         sendTelemetry();
     }
 }
 
-void ROS2BridgeManager::sendTelemetry() {
+bool ROS2BridgeManager::sendTelemetry(const TelemetryData& data) {
     TelemetryPayload payload;
-    payload.timestamp_ms = millis();
-    
-    payload.accel_x = mpu.getAccelX();
-    payload.accel_y = mpu.getAccelY();
-    payload.accel_z = mpu.getAccelZ();
-
-    payload.gyro_x  = mpu.getGyroX();
-    payload.gyro_y  = mpu.getGyroY();
-    payload.gyro_z  = mpu.getGyroZ();
-
-    payload.roll    = mpu.getRoll();
-    payload.pitch   = mpu.getPitch();
-    payload.yaw     = mpu.getYaw();
-
-    payload.front_distance = HC_SR04_GetFrontDistance();
-    payload.rear_distance  = HC_SR04_GetRearDistance();
-
-    payload.current_mode   = (uint8_t)currentMode;
-    payload.auto_state     = (uint8_t)currentAutoState;
-
-    payload.motor_fl_speed = (int16_t)motorFL.getSpeed();
-    payload.motor_fr_speed = (int16_t)motorFR.getSpeed();
-    payload.motor_rl_speed = (int16_t)motorRL.getSpeed();
-    payload.motor_rr_speed = (int16_t)motorRR.getSpeed();
-
-    payload.flags = 0;
-    if (mpuOk) payload.flags |= (1 << 0);
-    if (HC_SR04_FrontOnline()) payload.flags |= (1 << 1);
-    if (HC_SR04_RearOnline()) payload.flags |= (1 << 2);
-    if (_isEStopActive) payload.flags |= (1 << 3);
+    payload.timestamp_ms = data.timestamp_ms;
+    payload.accel_x = data.accel_x;
+    payload.accel_y = data.accel_y;
+    payload.accel_z = data.accel_z;
+    payload.gyro_x = data.gyro_x;
+    payload.gyro_y = data.gyro_y;
+    payload.gyro_z = data.gyro_z;
+    payload.roll = data.roll;
+    payload.pitch = data.pitch;
+    payload.yaw = data.yaw;
+    payload.front_distance = data.front_distance;
+    payload.rear_distance = data.rear_distance;
+    payload.current_mode = data.current_mode;
+    payload.auto_state = data.auto_state;
+    payload.motor_fl_speed = data.motor_fl_speed;
+    payload.motor_fr_speed = data.motor_fr_speed;
+    payload.motor_rl_speed = data.motor_rl_speed;
+    payload.motor_rr_speed = data.motor_rr_speed;
+    payload.flags = data.flags;
 
     size_t packetLen = PacketBuilder::buildTelemetryPacket(payload, _txBuffer, sizeof(_txBuffer));
     if (packetLen > 0) {
-        _serial->write(_txBuffer, packetLen);
+        return _serial->write(_txBuffer, packetLen) == packetLen;
     }
+    return false;
+}
+
+void ROS2BridgeManager::sendTelemetry() {
+    // Construct TelemetryData from SensorManager
+    const SensorData& sensor = SensorManager::getInstance().getSensorData();
+    TelemetryData data;
+    data.timestamp_ms = millis();
+    data.accel_x = sensor.accel_x;
+    data.accel_y = sensor.accel_y;
+    data.accel_z = sensor.accel_z;
+    data.gyro_x = sensor.gyro_x;
+    data.gyro_y = sensor.gyro_y;
+    data.gyro_z = sensor.gyro_z;
+    data.roll = sensor.roll;
+    data.pitch = sensor.pitch;
+    data.yaw = sensor.yaw;
+    data.front_distance = sensor.front_distance;
+    data.rear_distance = sensor.rear_distance;
+    data.current_mode = (int)currentMode;
+    data.auto_state = (int)currentAutoState;
+    data.motor_fl_speed = (int16_t)motorFL.getSpeed();
+    data.motor_fr_speed = (int16_t)motorFR.getSpeed();
+    data.motor_rl_speed = (int16_t)motorRL.getSpeed();
+    data.motor_rr_speed = (int16_t)motorRR.getSpeed();
+
+    data.flags = 0;
+    if (mpuOk) data.flags |= (1 << 0);
+    if (HC_SR04_FrontOnline()) data.flags |= (1 << 1);
+    if (HC_SR04_RearOnline()) data.flags |= (1 << 2);
+    if (_isEStopActive) data.flags |= (1 << 3);
+
+    sendTelemetry(data);
+}
+
+bool ROS2BridgeManager::receiveCommand(MotionCommand& cmd) {
+    if (_hasNewCmd) {
+        cmd = _latestCmd;
+        _hasNewCmd = false;
+        return true;
+    }
+    return false;
+}
+
+void ROS2BridgeManager::publishStatus() {
+    // In status or send diagnostic heartbeat
 }
 
 void ROS2BridgeManager::setEmergencyStop(bool enable) {
     _isEStopActive = enable;
     if (_isEStopActive) {
-        car.stop();
+        moveControl.stop();
         currentMoveDir = "E-STOP ACTIVATED";
         currentSpeed = 0;
         MH_FMD_Beep(500);
-        Serial.println(F("🚨 [ROS2 E-STOP] Đã KÍCH HOẠT dừng khẩn cấp!"));
+        Serial.println(F("🚨 [ROS2 E-STOP] Da KICH HOAT dung khan cap!"));
     } else {
-        Serial.println(F("✅ [ROS2 E-STOP] Đã HỦY BỎ dừng khẩn cấp. System Ready."));
+        Serial.println(F("✅ [ROS2 E-STOP] Da HUY BO dung khan cap. System Ready."));
     }
 }
 
