@@ -14,7 +14,7 @@ ROS2BridgeManager::ROS2BridgeManager() {
     _cmdVy = 0.0f;
     _cmdW = 0.0f;
     _hasNewCmd = false;
-    _isTelemetryEnabled = true;
+    _isTelemetryEnabled = false;
 }
 
 void ROS2BridgeManager::begin(HardwareSerial* serialPointer, uint16_t telemetryRateHz) {
@@ -59,6 +59,9 @@ void ROS2BridgeManager::update() {
         uint8_t payloadLen = 0;
 
         if (_parser.parseByte(byteIn, msgId, _rxPayloadBuffer, payloadLen)) {
+            // Tự động bật phát dữ liệu phản hồi (telemetry) khi có thiết bị kết nối truyền lệnh nhị phân
+            _isTelemetryEnabled = true;
+
             switch (msgId) {
                 case MSG_ID_CMD_VEL: {
                     if (payloadLen == sizeof(CmdVelPayload)) {
