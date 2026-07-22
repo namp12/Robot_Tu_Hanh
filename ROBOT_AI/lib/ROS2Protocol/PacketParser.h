@@ -46,6 +46,7 @@ public:
      * @return true nếu đã nhận đủ 1 gói tin hoàn chỉnh và CRC16 đúng, ngược lại false
      */
     bool parseByte(uint8_t byteIn, uint8_t& outMsgId, uint8_t* outPayload, uint8_t& outLen);
+    bool isInPacket() const { return _state != STATE_WAIT_HEADER1 && _state != STATE_WAIT_HEADER2; }
 };
 
 #endif // PACKET_PARSER_H

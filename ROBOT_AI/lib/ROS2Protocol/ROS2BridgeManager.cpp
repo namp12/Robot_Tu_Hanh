@@ -34,6 +34,26 @@ void ROS2BridgeManager::update() {
     // 1. Read & decode Pi Serial
     while (_serial->available()) {
         uint8_t byteIn = (uint8_t)_serial->read();
+
+        // Tích lũy bộ đệm CLI nếu không trong chế độ nhận gói tin nhị phân
+        static String cliBuffer = "";
+        if (!_parser.isInPacket() && byteIn != ROS2_HEADER1) {
+            if (byteIn == '\n' || byteIn == '\r') {
+                if (cliBuffer.length() > 0) {
+                    processCommand(cliBuffer);
+                    cliBuffer = "";
+                }
+            } else if (byteIn >= 32 && byteIn <= 126) {
+                cliBuffer += (char)byteIn;
+                if (cliBuffer.length() > 60) {
+                    cliBuffer = "";
+                }
+            }
+        } else {
+            // Giải phóng bộ đệm nếu nhận được header của gói tin nhị phân
+            cliBuffer = "";
+        }
+
         uint8_t msgId = 0;
         uint8_t payloadLen = 0;
 
