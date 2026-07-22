@@ -64,6 +64,7 @@ void printHelp() {
     Serial.println(F("   reset_goc          -> Thiết lập lại góc Yaw về 0"));
     Serial.println(F("   debug              -> Xem tần số PWM và trạng thái pin"));
     Serial.println(F("   test_motor         -> Chạy tuần tự test động cơ (không block)"));
+    Serial.println(F("   telemetry on/off   -> Bật/Tắt truyền telemetry nhị phân (t on/off)"));
     Serial.println(F("   bypass / bp        -> Bật/Tắt bỏ qua lỗi cảm biến siêu âm (để test AUTO)"));
     Serial.println(F("   pi <lệnh>          -> Gửi lệnh Raspberry Pi mở rộng (forward, backward, left, right, rotate_left, rotate_right, stop, recover, set_speed <v>, set_target_angle <a>)"));
     Serial.println(F("   help / h           -> In lại bảng hướng dẫn này"));
@@ -406,6 +407,16 @@ static void initCommandRegistry() {
                       bypassSensorCheck ? "ĐANG BẬT (ON)" : "ĐANG TẮT (OFF)");
     }};
 
+    commandRegistry["telemetry"] = {"Toggle Telemetry Stream", [](int, const String& param) {
+        bool enable = true;
+        if (param.equalsIgnoreCase("off") || param.equalsIgnoreCase("0") || param == "disable" || param == "f") {
+            enable = false;
+        }
+        ros2Bridge.setTelemetryEnabled(enable);
+        Serial.printf("   [Telemetry] Binary telemetry streaming is now: %s\n",
+                      enable ? "ENABLED (ON)" : "DISABLED (OFF)");
+    }};
+
     commandRegistry["help"] = {"Print Help Menu", [](int, const String&) {
         printHelp();
     }};
@@ -420,7 +431,8 @@ static std::string getNormalizedAction(const std::string& rawAction) {
         {"run", "mode_auto"}, {"auto", "mode_auto"}, {"2", "mode_auto"},
         {"ros2", "mode_ros2"}, {"mode_ros2", "mode_ros2"}, {"4", "mode_ros2"},
         {"st", "print_status"}, {"status", "print_status"},
-        {"bp", "toggle_bypass"}, {"bypass", "toggle_bypass"}
+        {"bp", "toggle_bypass"}, {"bypass", "toggle_bypass"},
+        {"t", "telemetry"}, {"telemetry", "telemetry"}
     };
     auto it = aliasMap.find(rawAction);
     if (it != aliasMap.end()) {

@@ -31,6 +31,7 @@ private:
     // Command cache for interface query
     MotionCommand _latestCmd;
     bool _hasNewCmd;
+    bool _isTelemetryEnabled;
 
 public:
     ROS2BridgeManager();
@@ -55,6 +56,9 @@ public:
      */
     void setEmergencyStop(bool enable);
     bool isEmergencyStop() const;
+
+    void setTelemetryEnabled(bool enable) { _isTelemetryEnabled = enable; }
+    bool isTelemetryEnabled() const { return _isTelemetryEnabled; }
 
     /**
      * @brief Lấy thời điểm nhận lệnh cmd_vel gần nhất (ms)

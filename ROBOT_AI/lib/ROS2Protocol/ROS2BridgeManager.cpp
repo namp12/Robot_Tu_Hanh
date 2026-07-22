@@ -14,6 +14,7 @@ ROS2BridgeManager::ROS2BridgeManager() {
     _cmdVy = 0.0f;
     _cmdW = 0.0f;
     _hasNewCmd = false;
+    _isTelemetryEnabled = true;
 }
 
 void ROS2BridgeManager::begin(HardwareSerial* serialPointer, uint16_t telemetryRateHz) {
@@ -159,7 +160,9 @@ void ROS2BridgeManager::update() {
     // 3. Publish Status / Send Telemetry at 50Hz
     if (now - _lastTelemetryTime >= _telemetryIntervalMs) {
         _lastTelemetryTime = now;
-        sendTelemetry();
+        if (_isTelemetryEnabled) {
+            sendTelemetry();
+        }
     }
 }
 
