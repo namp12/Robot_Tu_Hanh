@@ -92,8 +92,10 @@ void setup() {
     MH_FMD_Init();
     MH_FMD_SetThreshold(OBSTACLE_TRIGGER_CM);
 
+#if ENCODER_ENABLED
     Serial.println(F("[System] Khoi tao module Encoder..."));
     encoderManager.begin();
+#endif
 
     // 6. Khởi tạo các phân hệ chức năng
     Serial.println(F("[System] Khoi tao phan he dieu khien bang tay..."));
@@ -124,6 +126,7 @@ void setup() {
 
     // Task 20ms: Đo cảm biến, cập nhật SensorManager và kiểm tra khoảng cách an toàn
     mainScheduler.registerTask(20, []() {
+#if ENCODER_ENABLED
         // Cập nhật bộ đếm và trạng thái Encoder
         encoderManager.update();
         SensorManager::getInstance().publishEncoders(
@@ -132,6 +135,7 @@ void setup() {
             encoderManager.getPulse(2),
             encoderManager.getPulse(3)
         );
+#endif
 
         if (should_run_sensor_update()) {
             HC_SR04_Update();

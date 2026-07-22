@@ -6,6 +6,7 @@
 #include "Sensor_HC_SR04.h"
 #include "driver/gpio.h"
 #include "PinMap.h"
+#include "Config.h"
 
 #define FILTER_SIZE 5
 
@@ -74,7 +75,7 @@ static float getMedian(RollingBuffer &buf) {
 void HC_SR04_CheckConflicts() {
     // Quét toàn bộ project và in thông tin chập chân cảnh báo chéo phần cứng
     Serial.println(F("\n⚠️ [GPIO CONFLICT DETECTED]"));
-    Serial.println(F("   No GPIO conflicts detected (Encoder module removed)."));
+    Serial.printf("   Encoder status is governed by ENCODER_ENABLED = %s\n", ENCODER_ENABLED ? "ON" : "OFF");
     Serial.println(F("===========================\n"));
 }
 
