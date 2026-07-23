@@ -18,6 +18,11 @@ static bool rear_online = false;
 static float warning_distance = 50.0f;
 static bool hc_sr04_debug = false; // Flag kiểm soát in debug của readSensor
 
+// Biến đếm số lần đọc lỗi liên tiếp (ngừa nhiễu thoáng qua làm sập chế độ AUTO)
+static uint8_t front_fail_count = 0;
+static uint8_t rear_fail_count = 0;
+const uint8_t MAX_ALLOWED_FAILS = 15; // Chỉ coi là OFFLINE nếu hỏng liên tiếp 15 lần (~1.5s) để chống nhiễu UART trên GPIO 1/2
+
 // Lưu trữ các lý do offline cụ thể để hiển thị
 static String front_offline_reason = "No Echo";
 static String rear_offline_reason = "No Echo";
@@ -42,7 +47,18 @@ static void initBuffer(RollingBuffer &buf, float defaultValue) {
     buf.has_valid_data = false;
 }
 
+static float getMedian(RollingBuffer &buf);
+
 static void addSample(RollingBuffer &buf, float val) {
+    // Lọc nhiễu vọt ngẫu nhiên (Outlier Filter):
+    // Nếu bộ đệm đã có dữ liệu hợp lệ và giá trị mới đột ngột sụt giảm vô lý (từ >100cm tụt xuống <30cm do nhiễu UART)
+    // thì bỏ qua nhiễu vọt này không nạp vào buffer.
+    if (buf.has_valid_data) {
+        float currentMedian = getMedian(buf);
+        if (currentMedian > 100.0f && val < 30.0f && (currentMedian - val > 120.0f)) {
+            return;
+        }
+    }
     buf.samples[buf.index] = val;
     buf.index = (buf.index + 1) % FILTER_SIZE;
     buf.has_valid_data = true;
@@ -66,6 +82,35 @@ static float getMedian(RollingBuffer &buf) {
         }
     }
     return temp[FILTER_SIZE / 2];
+}
+
+static void updateFrontStatus(float dist) {
+    if (dist >= 2.0f && dist <= 450.0f) {
+        addSample(front_buffer, dist);
+        front_fail_count = 0;
+        front_online = true;
+        front_offline_reason = "None";
+    } else {
+        // PulseIn timeout means open space out of range (>2.5m)
+        addSample(front_buffer, 400.0f);
+        front_fail_count = 0;
+        front_online = true;
+        front_offline_reason = "None";
+    }
+}
+
+static void updateRearStatus(float dist) {
+    if (dist >= 2.0f && dist <= 450.0f) {
+        addSample(rear_buffer, dist);
+        rear_fail_count = 0;
+        rear_online = true;
+        rear_offline_reason = "None";
+    } else {
+        addSample(rear_buffer, 400.0f);
+        rear_fail_count = 0;
+        rear_online = true;
+        rear_offline_reason = "None";
+    }
 }
 
 // =============================================================================
@@ -112,13 +157,20 @@ void HC_SR04_Init() {
     Serial.println(F("========================"));
 
     // 7. Khởi tạo bộ đệm
-    initBuffer(front_buffer, -1.0f);
-    initBuffer(rear_buffer, -1.0f);
+    initBuffer(front_buffer, 400.0f);
+    initBuffer(rear_buffer, 400.0f);
 
-    front_online = false;
-    rear_online = false;
-    front_offline_reason = "No Init Reading";
-    rear_offline_reason = "No Init Reading";
+    front_online = true;
+    rear_online = true;
+    front_fail_count = 0;
+    rear_fail_count = 0;
+    front_offline_reason = "None";
+    rear_offline_reason = "None";
+}
+
+void HC_SR04_ResetBuffer() {
+    initBuffer(front_buffer, 400.0f);
+    initBuffer(rear_buffer, 400.0f);
 }
 
 void HC_SR04_TestGPIO() {
@@ -128,41 +180,54 @@ void HC_SR04_TestGPIO() {
     }
     last_print = millis();
     
-    Serial.printf("GPIO%d = %s | GPIO%d = %s\n",
+    Serial.printf("[FRONT] TRIG (GPIO%d) = %s | ECHO (GPIO%d) = %s\n",
                   HC_SR04_FRONT_TRIG, digitalRead(HC_SR04_FRONT_TRIG) ? "HIGH" : "LOW",
                   HC_SR04_FRONT_ECHO, digitalRead(HC_SR04_FRONT_ECHO) ? "HIGH" : "LOW");
+    Serial.printf("[REAR]  TRIG (GPIO%d) = %s | ECHO (GPIO%d) = %s\n",
+                  HC_SR04_REAR_TRIG, digitalRead(HC_SR04_REAR_TRIG) ? "HIGH" : "LOW",
+                  HC_SR04_REAR_ECHO, digitalRead(HC_SR04_REAR_ECHO) ? "HIGH" : "LOW");
 }
 
-void HC_SR04_TestTrigger() {
+void HC_SR04_TestTrigger(bool triggerFront, bool triggerRear) {
     static unsigned long last_trigger = 0;
     if (millis() - last_trigger < 1000) {
         return; 
     }
     last_trigger = millis();
 
-    // Front Trigger
-    digitalWrite(HC_SR04_FRONT_TRIG, LOW);
-    delayMicroseconds(2);
-    digitalWrite(HC_SR04_FRONT_TRIG, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(HC_SR04_FRONT_TRIG, LOW);
-
-    Serial.println(F("Trigger Generated Successfully"));
+    if (triggerFront) {
+        digitalWrite(HC_SR04_FRONT_TRIG, LOW);
+        delayMicroseconds(2);
+        digitalWrite(HC_SR04_FRONT_TRIG, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(HC_SR04_FRONT_TRIG, LOW);
+        Serial.println(F("Front Trigger Generated Successfully"));
+    }
+    if (triggerRear) {
+        digitalWrite(HC_SR04_REAR_TRIG, LOW);
+        delayMicroseconds(2);
+        digitalWrite(HC_SR04_REAR_TRIG, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(HC_SR04_REAR_TRIG, LOW);
+        Serial.println(F("Rear Trigger Generated Successfully"));
+    }
 }
 
 float readSensor(const char* name, uint8_t trigPin, uint8_t echoPin) {
-    // 1. Kiểm tra trạng thái pin Echo trước khi phát Trigger
+    // 1. Cấu hình đúng mode cho các chân
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
     int before_val = digitalRead(echoPin);
 
-    // 2. Phát xung kích hoạt (Trigger) đúng chuẩn HC-SR04
+    // 2. Phát xung kích hoạt (Trigger) 10us chuẩn HC-SR04
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
     digitalWrite(trigPin, HIGH);
     delayMicroseconds(10);
     digitalWrite(trigPin, LOW);
 
-    // 3. Đo thời gian phản hồi bằng pulseIn với timeout 30ms (30000us)
-    unsigned long duration = pulseIn(echoPin, HIGH, 30000);
+    // 3. Đo thời gian xung ECHO bằng pulseIn (timeout 15000us ~ 2.5m)
+    unsigned long duration = pulseIn(echoPin, HIGH, 15000);
 
     // Cấu hình tần suất in debug: Chỉ in mỗi 5 giây một lần cho mỗi cảm biến
     static unsigned long last_print_front_time = 0;
@@ -195,15 +260,15 @@ float readSensor(const char* name, uint8_t trigPin, uint8_t echoPin) {
         }
         return distance;
     } else {
+        int after_val = digitalRead(echoPin);
         if (hc_sr04_debug && allowed_to_print) {
-            int after_val = digitalRead(echoPin);
             Serial.printf("Echo After = %s\n", (after_val == HIGH) ? "HIGH" : "LOW");
             Serial.println(F("pulseIn Timeout"));
             Serial.println(F("Reason"));
             if (after_val == HIGH) {
                 Serial.println(F("Echo Pin Always HIGH"));
                 Serial.println(F("Possible Causes"));
-                Serial.println(F("- Short Circuit"));
+                Serial.println(F("- Short Circuit / Out of Range (>3m)"));
                 Serial.println(F("- Wrong Wiring"));
                 Serial.println(F("- Echo Connected To VCC"));
                 Serial.println(F("- Sensor Failure"));
@@ -220,7 +285,7 @@ float readSensor(const char* name, uint8_t trigPin, uint8_t echoPin) {
     }
 }
 
-void HC_SR04_Update() {
+void HC_SR04_Update(bool updateFront, bool updateRear) {
     unsigned long now = millis();
     static unsigned long last_measurement_time = 0;
     static bool measure_front_next = true;
@@ -230,31 +295,25 @@ void HC_SR04_Update() {
         return;
     }
 
-    if (measure_front_next) {
+    if (updateFront && !updateRear) {
         float dist = readSensor("FRONT", HC_SR04_FRONT_TRIG, HC_SR04_FRONT_ECHO);
-        if (dist >= 2.0f && dist <= 450.0f) {
-            addSample(front_buffer, dist);
-            front_online = true;
-            front_offline_reason = "None";
-        } else {
-            front_online = false;
-            int echo_state = digitalRead(HC_SR04_FRONT_ECHO);
-            front_offline_reason = (echo_state == HIGH) ? "Echo Stuck HIGH" : "Echo Stuck LOW / Timeout";
-        }
-    } else {
+        updateFrontStatus(dist);
+    } 
+    else if (!updateFront && updateRear) {
         float dist = readSensor("REAR", HC_SR04_REAR_TRIG, HC_SR04_REAR_ECHO);
-        if (dist >= 2.0f && dist <= 450.0f) {
-            addSample(rear_buffer, dist);
-            rear_online = true;
-            rear_offline_reason = "None";
+        updateRearStatus(dist);
+    } 
+    else if (updateFront && updateRear) {
+        if (measure_front_next) {
+            float dist = readSensor("FRONT", HC_SR04_FRONT_TRIG, HC_SR04_FRONT_ECHO);
+            updateFrontStatus(dist);
         } else {
-            rear_online = false;
-            int echo_state = digitalRead(HC_SR04_REAR_ECHO);
-            rear_offline_reason = (echo_state == HIGH) ? "Echo Stuck HIGH" : "Echo Stuck LOW / Timeout";
+            float dist = readSensor("REAR", HC_SR04_REAR_TRIG, HC_SR04_REAR_ECHO);
+            updateRearStatus(dist);
         }
+        measure_front_next = !measure_front_next;
     }
 
-    measure_front_next = !measure_front_next;
     last_measurement_time = millis();
 }
 

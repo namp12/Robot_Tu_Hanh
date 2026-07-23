@@ -32,8 +32,8 @@ bool MPU6050Sensor::begin(uint8_t sda, uint8_t scl)
     Wire.begin(sda, scl);
     delay(10); // ổn định I2C
 
-    // Bước 2: Truyền &Wire (đã được begin() với đúng pin) vào Adafruit
-    if (!mpu.begin(MPU6050_I2CADDR_DEFAULT, &Wire))
+    // Bước 2: Truyền &Wire vào Adafruit, thử cả 2 địa chỉ I2C 0x68 và 0x69
+    if (!mpu.begin(MPU6050_I2CADDR_DEFAULT, &Wire) && !mpu.begin(0x69, &Wire))
     {
         return false;
     }
@@ -41,6 +41,15 @@ bool MPU6050Sensor::begin(uint8_t sda, uint8_t scl)
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
     mpu.setGyroRange(MPU6050_RANGE_500_DEG);
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+
+    // Bước 3: Tự động calib Gyro Z offset khi đứng yên lúc khởi động
+    float sumZ = 0;
+    for (int i = 0; i < 40; i++) {
+        mpu.getEvent(&accel, &gyro, &temp);
+        sumZ += gyro.gyro.z;
+        delay(5);
+    }
+    gyroZOffset = sumZ / 40.0f;
 
     previousTime = millis();
     _ready = true;
@@ -68,9 +77,13 @@ void MPU6050Sensor::update()
     float dt = (currentTime - previousTime) / 1000.0f;
     previousTime = currentTime;
 
+    // Trừ offset tĩnh và áp dụng lọc vùng chết (Deadband Filter)
+    float gZ = gyroZ - gyroZOffset;
+    if (fabs(gZ) < 0.02f) gZ = 0.0f;
+
     roll  += gyroX * 57.2958f * dt;
     pitch += gyroY * 57.2958f * dt;
-    yaw   += gyroZ * 57.2958f * dt;
+    yaw   += gZ * 57.2958f * dt;
 }
 
 void MPU6050Sensor::calibrate()

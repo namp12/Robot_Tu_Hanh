@@ -56,6 +56,9 @@ public:
     // Implement IEventSubscriber
     void onEvent(const Event& event) override;
     
+    // Primary ROS2 Twist compatible API
+    void move(float linear_x, float linear_y, float angular_z);
+
     // Compatibility APIs
     void forward(int speed);
     void backward(int speed);

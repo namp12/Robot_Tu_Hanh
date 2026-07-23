@@ -43,20 +43,21 @@ void clien_dieukhien_Update() {
 
 void printHelp() {
     Serial.println(F("\n========================================================"));
-    Serial.println(F("              BẢNG LỆNH ĐIỀU KHIỂN ROBOT"));
+    Serial.println(F("       BẢNG LỆNH ĐIỀU KHIỂN ROBOT MECANUM (10 HƯỚNG)"));
     Serial.println(F("========================================================"));
-    Serial.println(F(" 🎮 CHẾ ĐỘ THỦ CÔNG - PHÍM TẮT KÈM TỐC ĐỘ (VD: w 180, a 200, d):"));
-    Serial.println(F("       [Q] Xoay Trái  -  [W] Tiến Thẳng  -  [E] Xoay Phải"));
-    Serial.println(F("       [A] Đi Sang Trái - [S] Lùi Lại    -  [D] Đi Sang Phải"));
-    Serial.println(F("                         [X] DỪNG XE & THOÁT AUTO"));
+    Serial.println(F(" 🎮 CHẾ ĐỘ THỦ CÔNG - PHÍM TẮT KÈM TỐC ĐỘ (VD: w 180, a 200, z):"));
+    Serial.println(F("       [Z] Chéo Tiến Trái -  [W] Tiến Thẳng   - [C] Chéo Tiến Phải"));
+    Serial.println(F("       [A] Đi Sang Trái   -  [X] DỪNG XE      - [D] Đi Sang Phải"));
+    Serial.println(F("       [Q] Xoay Trái      -  [S] Lùi Lại      - [E] Xoay Phải"));
     Serial.println(F(" ------------------------------------------------------"));
     Serial.println(F(" ⚙️ LỆNH CHUYỂN CHẾ ĐỘ:"));
     Serial.println(F("   auto / run / 2     -> Bật Chế độ 2: Tự Động (Xe tự tránh vật cản)"));
     Serial.println(F("   manual / man / m / 1 -> Bật Chế độ 1: Thủ Công (Người dùng lái)"));
     Serial.println(F(" ------------------------------------------------------"));
     Serial.println(F(" 📝 CÁC LỆNH ĐẦY ĐỦ (Nhập dạng: <lệnh> <tốc độ 0-255>):"));
-    Serial.println(F("   tien <speed>  -  lui <speed>  -  trai <speed>  -  phai <speed>"));
-    Serial.println(F("   xoay_trai <speed>  -  xoay_phai <speed>  -  dung"));
+    Serial.println(F("   tien <v> - lui <v> - trai <v> - phai <v> - dung"));
+    Serial.println(F("   xoay_trai <v> - xoay_phai <v>"));
+    Serial.println(F("   cheo_tt <v> - cheo_tp <v> - cheo_st <v> - cheo_sp <v>"));
     Serial.println(F(" ------------------------------------------------------"));
     Serial.println(F(" 🛠️ CÁC LỆNH HỆ THỐNG / CHẨN ĐOÁN:"));
     Serial.println(F("   status / st        -> Xem thông tin trạng thái xe (chỉ in 1 lần)"));
@@ -66,7 +67,7 @@ void printHelp() {
     Serial.println(F("   test_motor         -> Chạy tuần tự test động cơ (không block)"));
     Serial.println(F("   telemetry on/off   -> Bật/Tắt truyền telemetry nhị phân (t on/off)"));
     Serial.println(F("   bypass / bp        -> Bật/Tắt bỏ qua lỗi cảm biến siêu âm (để test AUTO)"));
-    Serial.println(F("   pi <lệnh>          -> Gửi lệnh Raspberry Pi mở rộng (forward, backward, left, right, rotate_left, rotate_right, stop, recover, set_speed <v>, set_target_angle <a>)"));
+    Serial.println(F("   pi <lệnh>          -> Gửi lệnh Raspberry Pi mở rộng"));
     Serial.println(F("   help / h           -> In lại bảng hướng dẫn này"));
     Serial.println(F("========================================================\n"));
 }
@@ -426,10 +427,11 @@ static std::string getNormalizedAction(const std::string& rawAction) {
     static std::unordered_map<std::string, std::string> aliasMap = {
         {"w", "tien"}, {"s", "lui"}, {"a", "trai"}, {"d", "phai"},
         {"q", "xoay_trai"}, {"e", "xoay_phai"}, {"x", "dung"},
+        {"z", "cheo_tt"}, {"c", "cheo_tp"},
         {"h", "help"},
-        {"m", "mode_manual"}, {"man", "mode_manual"}, {"manual", "mode_manual"}, {"1", "mode_manual"},
-        {"run", "mode_auto"}, {"auto", "mode_auto"}, {"2", "mode_auto"},
-        {"ros2", "mode_ros2"}, {"mode_ros2", "mode_ros2"}, {"4", "mode_ros2"},
+        {"m", "mode_manual"}, {"man", "mode_manual"}, {"manual", "mode_manual"},
+        {"run", "mode_auto"}, {"auto", "mode_auto"},
+        {"ros2", "mode_ros2"},
         {"st", "print_status"}, {"status", "print_status"},
         {"bp", "toggle_bypass"}, {"bypass", "toggle_bypass"},
         {"t", "telemetry"}, {"telemetry", "telemetry"}

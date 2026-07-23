@@ -41,18 +41,18 @@ const float L_Y = 0.15; // m (Khoảng cách từ tâm đến trục bánh xe th
 
 // --- Cấu hình PID Giữ Hướng (Yaw Heading Hold) ---
 #define AUTO_PID_ENABLED           true    // Bật/Tắt bộ điều khiển PID giữ hướng
-const float AUTO_KP              = 2.5f;   // Hệ số Kp
-const float AUTO_KI              = 0.05f;  // Hệ số Ki
-const float AUTO_KD              = 0.8f;   // Hệ số Kd
-const int   AUTO_MAX_CORRECTION  = 50;     // Tốc độ điều chỉnh PWM tối đa của PID
-const int   AUTO_PID_OUTPUT_CLAMP = 40;    // Giới hạn Clamp đầu ra PID (tránh rung dao động động cơ)
+const float AUTO_KP              = 1.2f;   // Hệ số Kp mượt (tránh rung lắc bánh)
+const float AUTO_KI              = 0.02f;  // Hệ số Ki
+const float AUTO_KD              = 0.4f;   // Hệ số Kd
+const int   AUTO_MAX_CORRECTION  = 30;     // Tốc độ điều chỉnh PWM tối đa của PID
+const int   AUTO_PID_OUTPUT_CLAMP = 25;    // Giới hạn Clamp đầu ra PID mượt (không gây khựng động cơ)
 
 // --- Cấu hình Tốc độ PWM & Khoảng cách Cảm biến ---
-const int   AUTO_MAX_SPEED       = 180;    // PWM tốc độ tối đa khi đường thoáng (0-255)
-const int   AUTO_MIN_SPEED       = 100;    // PWM tốc độ tối thiểu trước khi dừng hẳn
-const float AUTO_DIST_SLOW_CM    = 60.0f;  // Khoảng cách bắt đầu giảm tốc độ (cm)
+const int   AUTO_MAX_SPEED       = 100;    // PWM tốc độ tối đa khi đường thoáng (Theo yêu cầu: 100)
+const int   AUTO_MIN_SPEED       = 65;     // PWM tốc độ tối thiểu trước khi dừng hẳn (đủ lực quay bánh mượt)
+const float AUTO_DIST_SLOW_CM    = 80.0f;  // Khoảng cách bắt đầu giảm tốc độ từ 100 xuống 65 (cm)
 const float AUTO_DIST_STOP_CM    = 25.0f;  // Khoảng cách dừng hoàn toàn để chuyển tránh vật cản (cm)
-const float AUTO_DIST_CLEAR_CM   = 65.0f;  // Khoảng cách an toàn để quay lại tiến thẳng (cm)
+const float AUTO_DIST_CLEAR_CM   = 85.0f;  // Khoảng cách an toàn để quay lại tiến thẳng (cm)
 
 // --- Cấu hình Tăng/Giảm tốc mềm (PWM Acceleration/Deceleration Ramp) ---
 const int   AUTO_RAMP_STEP       = 10;     // Số bước thay đổi PWM mỗi chu kỳ

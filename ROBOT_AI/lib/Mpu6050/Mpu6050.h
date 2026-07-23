@@ -22,6 +22,7 @@ private:
     float gyroX;
     float gyroY;
     float gyroZ;
+    float gyroZOffset;
 
     float temperature;
 

@@ -37,15 +37,16 @@ float readSensor(const char* name, uint8_t trigPin, uint8_t echoPin);
  * Cấu hình chân GPIO, gắn ngắt ngoài cho chân ECHO và khởi tạo các biến.
  */
 void HC_SR04_Init();
+void HC_SR04_ResetBuffer();
 
 /**
  * @brief Cập nhật trạng thái đọc của cảm biến siêu âm phía trước.
  * Cần được gọi liên tục trong vòng lặp loop() chính của chương trình.
  */
-void HC_SR04_Update();
+void HC_SR04_Update(bool updateFront = true, bool updateRear = true);
 
 void HC_SR04_TestGPIO();
-void HC_SR04_TestTrigger();
+void HC_SR04_TestTrigger(bool triggerFront = true, bool triggerRear = true);
 void HC_SR04_CheckConflicts();
 
 /**

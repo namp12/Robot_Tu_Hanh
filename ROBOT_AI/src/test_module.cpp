@@ -16,7 +16,8 @@ static MainMode currentMainMode = MAIN_MODE_MANUAL;
 
 enum TestModule {
     TEST_NONE,
-    TEST_SENSOR_HC_SR04,
+    TEST_SENSOR_HC_SR04_FRONT,
+    TEST_SENSOR_HC_SR04_REAR,
     TEST_MOTOR,
     TEST_MPU6050,
     TEST_BUZZER
@@ -34,12 +35,13 @@ static void printModuleTestMenu() {
     Serial.println(F("\n============================================================="));
     Serial.println(F("🛠️ CHẾ ĐỘ 3: CHẨN ĐOÁN & KIỂM TRA CÁC MODULE"));
     Serial.println(F("============================================================="));
-    Serial.println(F("Vui lòng chọn module để kiểm tra (gõ số 1-5 rồi nhấn Enter):"));
-    Serial.println(F("  [1] Cảm biến siêu âm HC-SR04"));
-    Serial.println(F("  [2] Động cơ & Di chuyển (BTS7960 / Mecanum Car)"));
-    Serial.println(F("  [3] Cảm biến góc nghiêng IMU MPU6050"));
-    Serial.println(F("  [4] Còi cảnh báo MH-FMD (Active Buzzer)"));
-    Serial.println(F("  [5] Quay lại Menu chính (Chọn Chế độ 1 / Chế độ 2)"));
+    Serial.println(F("Vui lòng chọn module để kiểm tra (gõ số 1-6 rồi nhấn Enter):"));
+    Serial.println(F("  [1] Cảm biến siêu âm HC-SR04 TRƯỚC (Front)"));
+    Serial.println(F("  [2] Cảm biến siêu âm HC-SR04 SAU (Rear)"));
+    Serial.println(F("  [3] Động cơ & Di chuyển (BTS7960 / Mecanum Car)"));
+    Serial.println(F("  [4] Cảm biến góc nghiêng IMU MPU6050"));
+    Serial.println(F("  [5] Còi cảnh báo MH-FMD (Active Buzzer)"));
+    Serial.println(F("  [6] Quay lại Menu chính (Chọn Chế độ 1 / Chế độ 2)"));
     Serial.println(F("=============================================================\n"));
 }
 
@@ -126,75 +128,26 @@ bool should_run_sensor_update() {
         return runSensorUpdate;
     }
     // Nếu ở chế độ Test, chỉ cập nhật khi đang chọn test module cảm biến siêu âm và không bị pause
-    return (activeTestModule == TEST_SENSOR_HC_SR04 && runSensorUpdate);
+    return ((activeTestModule == TEST_SENSOR_HC_SR04_FRONT || activeTestModule == TEST_SENSOR_HC_SR04_REAR) && runSensorUpdate);
 }
 
 bool is_sensor_isolated_mode() {
-    return (currentMainMode == MAIN_MODE_TEST && activeTestModule == TEST_SENSOR_HC_SR04);
+    return (currentMainMode == MAIN_MODE_TEST && (activeTestModule == TEST_SENSOR_HC_SR04_FRONT || activeTestModule == TEST_SENSOR_HC_SR04_REAR));
+}
+
+bool is_sensor_front_test_active() {
+    return (activeTestModule == TEST_SENSOR_HC_SR04_FRONT);
+}
+
+bool is_sensor_rear_test_active() {
+    return (activeTestModule == TEST_SENSOR_HC_SR04_REAR);
 }
 
 void test_module_Init() {
-    Serial.println(F("Vui lòng chọn chế độ hoạt động ban đầu bằng cách gõ '1', '2', '3' hoặc '4' rồi nhấn Enter:"));
-    Serial.println(F("  [1] Chế độ 1: Người dùng điều khiển bằng tay (Manual Mode)"));
-    Serial.println(F("  [2] Chế độ 2: Xe chạy tự động tránh vật cản (Auto Mode)"));
-    Serial.println(F("  [3] Chế độ 3: Chế độ kiểm tra chẩn đoán các Module (Module Test Mode)"));
-    Serial.println(F("  [4] Chế độ 4: Kiểm tra ĐỘC LẬP cảm biến siêu âm HC-SR04 (Isolated Sensor Mode)"));
-    Serial.println(F("* Đang chờ lựa chọn (Mặc định tự chọn [1] sau 10 giây nếu không nhập)..."));
-    Serial.println(F("-------------------------------------------------------"));
-
-    unsigned long boot_wait_start = millis();
-    bool modeSelected = false;
-
-    while (millis() - boot_wait_start < 10000) {
-        if (Serial.available()) {
-            String choice = Serial.readStringUntil('\n');
-            choice.trim();
-            if (choice == "1") {
-                currentMainMode = MAIN_MODE_MANUAL;
-                currentMode = MODE_MANUAL;
-                modeSelected = true;
-                Serial.println(F("\n📢 [System] Đã chọn Chế độ 1: ĐIỀU KHIỂN BẰNG TAY (MANUAL)"));
-                break;
-            } else if (choice == "2") {
-                currentMainMode = MAIN_MODE_AUTO;
-                currentMode = MODE_AUTO;
-                modeSelected = true;
-                Serial.println(F("\n📢 [System] Đã chọn Chế độ 2: CHẠY TỰ ĐỘNG TRÁNH VẬT CẢN (AUTO)"));
-                break;
-            } else if (choice == "3") {
-                currentMainMode = MAIN_MODE_TEST;
-                currentMode = MODE_MANUAL; // Tạm thời đưa về MANUAL
-                activeTestModule = TEST_NONE;
-                modeSelected = true;
-                Serial.println(F("\n📢 [System] Đã chọn Chế độ 3: CHẨN ĐOÁN & KIỂM TRA CÁC MODULE"));
-                break;
-            } else if (choice == "4") {
-                currentMainMode = MAIN_MODE_TEST;
-                currentMode = MODE_MANUAL;
-                activeTestModule = TEST_SENSOR_HC_SR04;
-                HC_SR04_SetDebug(true); // Bật in debug chi tiết của readSensor khi test cảm biến
-                modeSelected = true;
-                Serial.println(F("\n📢 [System] Đã chọn Chế độ 4: KIỂM TRA ĐỘC LẬP CẢM BIẾN SIÊU ÂM (ISOLATED HC-SR04)"));
-                printSensorTestHelp();
-                break;
-            }
-        }
-        delay(10);
-    }
-
-    if (!modeSelected) {
-        currentMainMode = MAIN_MODE_MANUAL;
-        currentMode = MODE_MANUAL;
-        Serial.println(F("\n📢 [System] Quá thời gian chờ! Mặc định chọn Chế độ 1: ĐIỀU KHIỂN BẰNG TAY (MANUAL)."));
-    }
-
-    if (currentMainMode == MAIN_MODE_TEST) {
-        if (activeTestModule == TEST_NONE) {
-            printModuleTestMenu();
-        }
-    } else {
-        printHelp();
-    }
+    currentMainMode = MAIN_MODE_MANUAL;
+    currentMode = MODE_MANUAL;
+    Serial.println(F("\n📢 [System] Khởi động hoàn tất! Mặc định Chế độ 1: ĐIỀU KHIỂN BẰNG TAY (MANUAL)."));
+    printHelp();
 }
 
 // Xử lý lệnh
@@ -217,14 +170,19 @@ void test_module_Update() {
 
     // Tự động in kết quả siêu âm cách biệt mỗi 1000ms khi ở chế độ cô lập
     static unsigned long lastIsolatedPrint = 0;
-    if (activeTestModule == TEST_SENSOR_HC_SR04 && runSensorUpdate) {
+    if ((activeTestModule == TEST_SENSOR_HC_SR04_FRONT || activeTestModule == TEST_SENSOR_HC_SR04_REAR) && runSensorUpdate) {
         unsigned long now = millis();
         if (now - lastIsolatedPrint >= 1000) {
             lastIsolatedPrint = now;
-            float f = HC_SR04_GetFrontDistance();
-            float r = HC_SR04_GetRearDistance();
-            Serial.printf("✨ [Isolated Sensor] Front: %.1f cm | Rear: %.1f cm (Front: %s | Rear: %s)\n",
-                          f, r, HC_SR04_FrontOnline() ? "ONLINE" : "OFFLINE", HC_SR04_RearOnline() ? "ONLINE" : "OFFLINE");
+            if (activeTestModule == TEST_SENSOR_HC_SR04_FRONT) {
+                float f = HC_SR04_GetFrontDistance();
+                Serial.printf("✨ [Isolated Sensor] Front: %.1f cm (Front: %s)\n",
+                              f, HC_SR04_FrontOnline() ? "ONLINE" : "OFFLINE");
+            } else {
+                float r = HC_SR04_GetRearDistance();
+                Serial.printf("✨ [Isolated Sensor] Rear: %.1f cm (Rear: %s)\n",
+                              r, HC_SR04_RearOnline() ? "ONLINE" : "OFFLINE");
+            }
         }
     }
 }
@@ -302,7 +260,7 @@ static void processMainCommand(String cmd) {
         // Lệnh quay lại menu chọn module hoặc Menu chính
         if (action == "back") {
             if (activeTestModule != TEST_NONE) {
-                if (activeTestModule == TEST_SENSOR_HC_SR04) {
+                if (activeTestModule == TEST_SENSOR_HC_SR04_FRONT || activeTestModule == TEST_SENSOR_HC_SR04_REAR) {
                     HC_SR04_SetDebug(false); // Tắt debug log khi thoát bài test cảm biến
                 }
                 Serial.println(F("\nQuay lại Menu chọn Module..."));
@@ -318,7 +276,7 @@ static void processMainCommand(String cmd) {
         if (action == "h" || action == "help") {
             if (activeTestModule == TEST_NONE) {
                 printModuleTestMenu();
-            } else if (activeTestModule == TEST_SENSOR_HC_SR04) {
+            } else if (activeTestModule == TEST_SENSOR_HC_SR04_FRONT || activeTestModule == TEST_SENSOR_HC_SR04_REAR) {
                 printSensorTestHelp();
             } else if (activeTestModule == TEST_MOTOR) {
                 printMotorTestHelp();
@@ -333,32 +291,37 @@ static void processMainCommand(String cmd) {
         // Khi chưa chọn module nào (TEST_NONE)
         if (activeTestModule == TEST_NONE) {
             if (action == "1") {
-                activeTestModule = TEST_SENSOR_HC_SR04;
+                activeTestModule = TEST_SENSOR_HC_SR04_FRONT;
                 HC_SR04_SetDebug(true); // Bật in debug chi tiết của readSensor khi test cảm biến
-                Serial.println(F("\n📢 [Module Test] Đang kiểm tra CẢM BIẾN SIÊU ÂM HC-SR04"));
+                Serial.println(F("\n📢 [Module Test] Đang kiểm tra CẢM BIẾN SIÊU ÂM HC-SR04 TRƯỚC"));
                 printSensorTestHelp();
             } else if (action == "2") {
+                activeTestModule = TEST_SENSOR_HC_SR04_REAR;
+                HC_SR04_SetDebug(true); // Bật in debug chi tiết của readSensor khi test cảm biến
+                Serial.println(F("\n📢 [Module Test] Đang kiểm tra CẢM BIẾN SIÊU ÂM HC-SR04 SAU"));
+                printSensorTestHelp();
+            } else if (action == "3") {
                 activeTestModule = TEST_MOTOR;
                 Serial.println(F("\n📢 [Module Test] Đang kiểm tra ĐỘNG CƠ / DI CHUYỂN"));
                 printMotorTestHelp();
-            } else if (action == "3") {
+            } else if (action == "4") {
                 activeTestModule = TEST_MPU6050;
                 Serial.println(F("\n📢 [Module Test] Đang kiểm tra IMU MPU6050"));
                 printMpuTestHelp();
-            } else if (action == "4") {
+            } else if (action == "5") {
                 activeTestModule = TEST_BUZZER;
                 Serial.println(F("\n📢 [Module Test] Đang kiểm tra CÒI CẢNH BÁO MH-FMD"));
                 printBuzzerTestHelp();
-            } else if (action == "5") {
+            } else if (action == "6") {
                 promptMainMenuSelection();
             } else {
-                Serial.println(F("❌ Lựa chọn không hợp lệ! Vui lòng nhập từ 1 đến 5."));
+                Serial.println(F("❌ Lựa chọn không hợp lệ! Vui lòng nhập từ 1 đến 6."));
             }
             return;
         }
 
         // --- SUBMENU: Test Cảm biến HC-SR04 ---
-        if (activeTestModule == TEST_SENSOR_HC_SR04) {
+        if (activeTestModule == TEST_SENSOR_HC_SR04_FRONT || activeTestModule == TEST_SENSOR_HC_SR04_REAR) {
             if (action == "pause") {
                 runSensorUpdate = false;
                 HC_SR04_SetDebug(false); // Tạm dừng thì tắt luôn debug log
@@ -372,7 +335,10 @@ static void processMainCommand(String cmd) {
             } else if (action == "gpio") {
                 HC_SR04_TestGPIO();
             } else if (action == "trigger") {
-                HC_SR04_TestTrigger();
+                HC_SR04_TestTrigger(
+                    activeTestModule == TEST_SENSOR_HC_SR04_FRONT,
+                    activeTestModule == TEST_SENSOR_HC_SR04_REAR
+                );
             } else if (action == "conflict") {
                 HC_SR04_CheckConflicts();
             } else if (action == "warn") {

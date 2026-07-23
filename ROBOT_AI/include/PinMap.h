@@ -23,8 +23,8 @@
 #define MOTOR_RR_LPWM 11
 
 //================ HC-SR04 =================
-#define HC_FRONT_TRIG 1
-#define HC_FRONT_ECHO 2
+#define HC_FRONT_TRIG 16
+#define HC_FRONT_ECHO 17
 #define HC_REAR_TRIG  14
 #define HC_REAR_ECHO  15
 

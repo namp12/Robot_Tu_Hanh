@@ -24,14 +24,15 @@ enum OperatingMode {
 };
 
 enum AutoState {
-    AUTO_IDLE,       ///< Trạng thái chờ / tạm dừng trước khi chạy hoặc khi bị Pause
-    AUTO_FORWARD,    ///< Chạy tiến thẳng tự động
-    AUTO_STOP,       ///< Dừng tạm thời
-    AUTO_BACKWARD,   ///< Lùi lại ngắn khi gặp vật cản / recovery
-    AUTO_SCAN,       ///< Dừng xe, chờ cảm biến ổn định và xác nhận khoảng cách
-    AUTO_TURN_LEFT,  ///< Quay trái theo góc chỉ định
-    AUTO_TURN_RIGHT, ///< Quay phải theo góc chỉ định
-    AUTO_RECOVER     ///< Quy trình phục hồi khi bị kẹt hoặc đường bị chặn
+    AUTO_IDLE,           ///< Trạng thái chờ / tạm dừng
+    AUTO_FORWARD,        ///< Tiến thẳng tự động (Tốc độ 90 - 120 PWM)
+    AUTO_SLOW_FORWARD,   ///< Tiến chậm tự động khi tiếp cận vật cản (Tốc độ 60 - 75 PWM)
+    AUTO_STOP,           ///< Dừng xe hoàn toàn
+    AUTO_BACKWARD,       ///< Lùi xe bằng Encoder (~15cm, PWM 70)
+    AUTO_SCAN,           ///< Dừng đệm đọc & so sánh cảm biến tìm hướng
+    AUTO_ROTATE_LEFT,    ///< Quay trái theo góc MPU6050 (PWM 60)
+    AUTO_ROTATE_RIGHT,   ///< Quay phải theo góc MPU6050 (PWM 60)
+    AUTO_RECOVER         ///< Quy trình phục hồi khi cả 2 hướng bị chặn
 };
 
 // =============================================================================

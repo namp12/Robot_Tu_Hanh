@@ -35,4 +35,7 @@ bool should_run_sensor_update();
  */
 bool is_sensor_isolated_mode();
 
+bool is_sensor_front_test_active();
+bool is_sensor_rear_test_active();
+
 #endif // TEST_MODULE_H

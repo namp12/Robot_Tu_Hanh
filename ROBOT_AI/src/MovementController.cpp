@@ -4,6 +4,17 @@
 #include "EventBus/EventBus.h"
 #include "SensorManager/SensorManager.h"
 #include "MotionHandlers/MotionHandlers.h"
+#include "Kinematics.h"
+
+void MovementController::move(float linear_x, float linear_y, float angular_z) {
+    if (_isEStopActive) {
+        _car.stop();
+        return;
+    }
+    Kinematics kinematics;
+    WheelSpeeds speeds = kinematics.getWheelSpeeds(linear_x, linear_y, angular_z);
+    _car.setAllMotor(speeds.fl, speeds.fr, speeds.rl, speeds.rr);
+}
 
 MovementController::MovementController(Motor& car) 
     : _car(car), 
