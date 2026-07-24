@@ -1,30 +1,11 @@
-#ifndef SERIAL_PROTOCOL_H
-#define SERIAL_PROTOCOL_H
+/**
+ * @file SerialProtocol.h
+ * @brief Forwarder header linking to root src/SerialProtocol.h
+ */
 
-#include <Arduino.h>
-#include "Managers/CommandManager.h"
-#include "Managers/TelemetryManager.h"
+#ifndef PROTOCOL_SERIAL_PROTOCOL_H
+#define PROTOCOL_SERIAL_PROTOCOL_H
 
-class SerialProtocol {
-private:
-    Stream* _stream;
-    bool _isTelemetryEnabled;
+#include "../SerialProtocol.h"
 
-    SerialProtocol();
-
-public:
-    static SerialProtocol& getInstance() {
-        static SerialProtocol instance;
-        return instance;
-    }
-
-    void begin(Stream* stream = &Serial);
-    void update();
-    bool parseCommand(const String& rawInput, RobotCommand& outCmd);
-    void sendTelemetry();
-
-    void setTelemetryEnabled(bool enable) { _isTelemetryEnabled = enable; }
-    bool isTelemetryEnabled() const { return _isTelemetryEnabled; }
-};
-
-#endif // SERIAL_PROTOCOL_H
+#endif // PROTOCOL_SERIAL_PROTOCOL_H

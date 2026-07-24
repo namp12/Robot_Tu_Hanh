@@ -151,7 +151,7 @@ void test_module_Init() {
 }
 
 // Xử lý lệnh
-static void processMainCommand(String cmd);
+void processMainCommand(String cmd);
 
 static String mainInputString = "";
 void test_module_Update() {
@@ -187,7 +187,7 @@ void test_module_Update() {
     }
 }
 
-static void processMainCommand(String cmd) {
+void processMainCommand(String cmd) {
     String origCmd = cmd;
     cmd.trim();
     if (cmd.length() == 0) return;
@@ -222,7 +222,7 @@ static void processMainCommand(String cmd) {
         printHelp();
         return;
     }
-    if (action == "diagnose" || action == "sensor" || action == "test_module") {
+    if (action == "diagnose" || action == "sensor" || action == "test_module" || action == "3" || action == "test") {
         currentMainMode = MAIN_MODE_TEST;
         currentMode = MODE_MANUAL;
         activeTestModule = TEST_NONE;

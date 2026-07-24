@@ -1,7 +1,7 @@
 /**
  * @file main.cpp
- * @brief Chương trình chính cho ESP32-S3 Hardware Controller cho ROS2 + SLAM + Navigation2.
- *        Khởi động BLE hoàn toàn tự động trên pin/nguồn ngoài, không cần cổng Serial hay bấm phím.
+ * @brief Chương trình chính cho ESP32-S3 Hardware Controller cho ROS2 Humble + SLAM + Nav2.
+ * Thiết kế theo kiến trúc Class Chuyên Nghiệp (Non-blocking, Millis(), Watchdog, Reconnect, Heartbeat).
  */
 
 #include <Arduino.h>
@@ -9,43 +9,47 @@
 #include "Config.h"
 #include "robot_global.h"
 
-// Hardware drivers
+// Class-based Architecture Headers
+#include "parameters.h"
+#include "mode_manager.h"
+#include "motion_controller.h"
+#include "safety.h"
+#include "SensorManager.h"
+#include "SerialProtocol.h"
+#include "bluetooth.h"
+#include "test_module.h"
+
+// Hardware Drivers
 #include "Motor.h"
 #include "Sensor_HC_SR04.h"
 #include "EncoderManager.h"
 #include "Mpu6050.h"
-
-// Core Controllers & Managers
 #include "MovementController.h"
-#include "Managers/UltrasonicManager.h"
-#include "Managers/IMUManager.h"
 #include "Managers/BuzzerManager.h"
 #include "Managers/RobotStateManager.h"
-#include "Managers/CommandManager.h"
-#include "Protocol/SerialProtocol.h"
-#include "BLEManager.h"
-
-// ROS2 Protocol Bridge
-#include "ROS2Bridge.h"
-
-// Simple Task Scheduler
-#include "Core/TaskScheduler.h"
+#include "ROS2BridgeManager.h"
 
 // =============================================================================
-// KHAI BÁO CÁC ĐỐI TƯỢNG PHẦN CỨNG TOÀN CỤC
+// KHAI BÁO ĐỐI TƯỢNG PHẦN CỨNG TOÀN CỤC
 // =============================================================================
 
-Motor motorFL(MOTOR1_PWM_L, MOTOR1_PWM_R); // Front Left
-Motor motorFR(MOTOR2_PWM_L, MOTOR2_PWM_R); // Front Right
-Motor motorRL(MOTOR3_PWM_L, MOTOR3_PWM_R); // Rear Left
-Motor motorRR(MOTOR4_PWM_L, MOTOR4_PWM_R); // Rear Right
+BTS7960 motorFL(MOTOR_FL_RPWM, MOTOR_FL_LPWM); // Front Left
+BTS7960 motorFR(MOTOR_FR_RPWM, MOTOR_FR_LPWM); // Front Right
+BTS7960 motorRL(MOTOR_RL_RPWM, MOTOR_RL_LPWM); // Rear Left
+BTS7960 motorRR(MOTOR_RR_RPWM, MOTOR_RR_LPWM); // Rear Right
 
-MovementController moveControl(&motorFL, &motorFR, &motorRL, &motorRR);
-ROS2Bridge ros2Bridge;
-TaskScheduler mainScheduler;
+Motor car(motorFL, motorFR, motorRL, motorRR);
+MovementController moveControl(car);
+EncoderManager& encoderManager = EncoderManager::getInstance();
+MPU6050Sensor mpu;
+bool mpuOk = false;
+unsigned long lastMpuUpdate = 0;
+const unsigned long MPU_INTERVAL = 20;
 
-// Khai báo các biến trạng thái toàn cục từ robot_global.h
-CarMode currentMode = MODE_MANUAL;
+ROS2BridgeManager ros2Bridge;
+
+// Các biến trạng thái toàn cục từ robot_global.h
+OperatingMode currentMode = MODE_MANUAL;
 AutoState currentAutoState = AUTO_IDLE;
 String currentMoveDir = "Dừng";
 int currentSpeed = 0;
@@ -53,107 +57,89 @@ bool isAvoidanceActive = false;
 unsigned long autoModeStartTime = 0;
 bool bypassSensorCheck = false;
 
-// Ngưỡng khoảng cách cảnh báo và hằng số thời gian chẩn đoán
 const float OBSTACLE_TRIGGER_CM = 50.0f;
 const float OBSTACLE_CLEAR_CM = 70.0f;
+
+// Instantiation cho các Controller Instance
+SensorManager& sensorManager     = SensorManager::getInstance();
+SafetyMonitor& safetyController   = SafetyMonitor::getInstance();
+ModeManager& modeManager         = ModeManager::getInstance();
+MotionController& motionController= MotionController::getInstance();
+SerialProtocol& serialProtocol   = SerialProtocol::getInstance();
 
 // =============================================================================
 // SETUP
 // =============================================================================
 void setup() {
-    // 1. Khởi tạo cổng Serial chính (Non-blocking)
-    Serial.begin(115200);
+    Serial.begin(SERIAL_BAUD);
 
     Serial.println(F("\n======================================================="));
-    Serial.println(F("🤖 ROBOT MECANUM - HARDWARE CONTROLLER FOR ROS2 + SLAM"));
+    Serial.println(F("🤖 ROBOT MECANUM - ROS2 CLASS HARDWARE CONTROLLER"));
     Serial.println(F("======================================================="));
 
-    // 2. Step 1: Initialize Hardware Drivers
+    // 1. Khởi tạo Motor Hardware Drivers
     motorFL.begin();
     motorFR.begin();
     motorRL.begin();
     motorRR.begin();
 
-#if ENCODER_ENABLED
-    encoderManager.begin();
-#endif
+    // 2. Khởi tạo các Class Module
+    ParameterManager::getInstance().initDefaults();
+    modeManager.init(MODE_MANUAL);
+    motionController.begin(&car);
+    safetyController.init();
+    sensorManager.begin();
+    serialProtocol.begin(&Serial);
+    BluetoothModule::getInstance().begin();
 
-    UltrasonicManager::getInstance().begin();
-    IMUManager::getInstance().begin(18, 19);
+    // 3. Khởi tạo hỗ trợ legacy
     BuzzerManager::getInstance().begin();
     RobotStateManager::getInstance().begin();
-
-    // 3. Step 2: Initialize CommandManager
-    CommandManager::getInstance().begin(&moveControl);
-
-    // 4. Step 3: Initialize MovementController & SerialProtocol
-    SerialProtocol::getInstance().begin(&Serial);
-
-    // 5. Step 4 & 5: Initialize BLEManager & Start Advertising Immediately
-    BLEManager::getInstance().begin();
-
-    // 6. Khởi tạo các phân hệ chức năng
     clien_dieukhien_Init();
     auto_run_Init();
     autoModeStartTime = millis();
     ros2Bridge.begin(&Serial, 50);
 
-    // 7. Đăng ký các task tuần hoàn cho Scheduler
-    mainScheduler.registerTask(1, []() {
-        test_module_Update();
-    });
-
-    mainScheduler.registerTask(10, []() {
-        if (!is_in_test_mode()) {
-            moveControl.update();
-            updateMotorTest();
-        } else {
-            updateMotorTest();
-        }
-    });
-
-    mainScheduler.registerTask(20, []() {
-#if ENCODER_ENABLED
-        encoderManager.update();
-#endif
-        if (should_run_sensor_update()) {
-            bool frontActive = true;
-            bool rearActive = true;
-            if (is_in_test_mode()) {
-                frontActive = is_sensor_front_test_active();
-                rearActive = is_sensor_rear_test_active();
-            }
-            UltrasonicManager::getInstance().update(frontActive, rearActive);
-        }
-
-        if (!is_sensor_isolated_mode()) {
-            IMUManager::getInstance().update();
-            BuzzerManager::getInstance().update();
-        }
-    });
-
-    // Task 50ms (20Hz): Phát tín hiệu Telemetry thống nhất lên ROS2 / Pi / BLE
-    mainScheduler.registerTask(50, []() {
-        SerialProtocol::getInstance().sendTelemetry();
-    });
-
-    // 8. Step 6: Robot Ready
     RobotStateManager::getInstance().setState(STATE_READY);
+    Serial.println(F("\n======================================================="));
     Serial.println(F("=== HỆ THỐNG HARDWARE CONTROLLER SẴN SÀNG ==="));
-    Serial.println(F("🤖 [System] Robot Ready. BLE Advertising: ESP32_Robot"));
-    
+    Serial.println(F("⚙️ HƯỚNG DẪN CHỌN CHẾ ĐỘ (Gõ lệnh vào Serial Monitor):"));
+    Serial.println(F("   1 hoặc 'manual' -> Bật Chế độ 1: Thủ Công (MANUAL)"));
+    Serial.println(F("   2 hoặc 'auto'   -> Bật Chế độ 2: Tự Động Né Vật Cản (AUTO)"));
+    Serial.println(F("   3 hoặc 'ros'    -> Bật Chế độ 3: Kết Nối ROS2 (ROS)"));
+    Serial.println(F("   't on' / 't off'-> Bật/Tắt in màn hình Telemetry cảm biến"));
+    Serial.println(F("=======================================================\n"));
+
     test_module_Init();
 }
 
 // =============================================================================
-// LOOP
+// MAIN LOOP - ĐÚNG THEO YÊU CẦU KIẾN TRÚC CHUẨN
 // =============================================================================
 void loop() {
-    // Nhận & Parse lệnh Serial và BLE non-blocking
-    SerialProtocol::getInstance().update();
-    BLEManager::getInstance().update();
-    ros2Bridge.update();
+    // 1. Cập nhật dữ liệu cảm biến
+    sensorManager.update();
 
-    // Thực thi cyclic task
-    mainScheduler.tick();
+    // 2. Gửi dữ liệu cảm biến lên Raspberry Pi / Web / ROS2 (20Hz)
+    sensorManager.sendData();
+
+    // 3. Kiểm tra các quy tắc an toàn & ngắt khẩn cấp
+    safetyController.update();
+
+    // 4. Cập nhật trạng thái Mode (MANUAL, AUTO, ROS)
+    // Mode chỉ quyết định nguồn lệnh lái, KHÔNG ảnh hưởng đọc cảm biến
+    clien_dieukhien_Update();
+    auto_run_Update();
+
+    // 5. Cập nhật Motion Controller (Kiểm tra Safety trước khi xuất PWM)
+    if (ModeManager::getInstance().getMode() == MODE_MANUAL) {
+        moveControl.update();
+    } else if (ModeManager::getInstance().getMode() == MODE_ROS) {
+        motionController.update();
+    }
+
+    // 6. Cập nhật Serial Protocol (Heartbeat 1000ms, Watchdog & Reconnect)
+    serialProtocol.update();
+    BluetoothModule::getInstance().update();
+    ros2Bridge.update();
 }

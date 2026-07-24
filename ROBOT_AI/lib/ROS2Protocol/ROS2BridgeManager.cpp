@@ -2,6 +2,7 @@
 #include "robot_global.h"
 #include "SensorManager/SensorManager.h"
 #include "MovementController.h"
+#include "test_module.h"
 
 ROS2BridgeManager::ROS2BridgeManager() {
     _serial = &Serial;
@@ -41,7 +42,7 @@ void ROS2BridgeManager::update() {
         if (!_parser.isInPacket() && byteIn != ROS2_HEADER1) {
             if (byteIn == '\n' || byteIn == '\r') {
                 if (cliBuffer.length() > 0) {
-                    processCommand(cliBuffer);
+                    processMainCommand(cliBuffer);
                     cliBuffer = "";
                 }
             } else if (byteIn >= 32 && byteIn <= 126) {

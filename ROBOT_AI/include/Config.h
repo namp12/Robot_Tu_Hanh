@@ -67,6 +67,14 @@ const unsigned long AUTO_SCAN_TIME_MS      = 300;  // Thời gian dừng quét c
 const int   AUTO_TURN_DEFAULT_SPEED        = 150;  // PWM mặc định khi quay góc
 const float AUTO_TURN_TOLERANCE_DEG        = 4.0f; // Dung sai góc quay chấp nhận được (độ)
 const unsigned long AUTO_TURN_TIMEOUT_MS   = 2500; // Timeout tối đa cho 1 lần quay (ms)
+// --- Cấu hình Module Obstacle Avoidance & AutoNavigator mới ---
+const float SAFE_DISTANCE         = 5.0f;   // Ngưỡng khoảng cách an toàn mặc định (5cm)
+const float SCAN_ANGLE            = 45.0f;  // Góc quay quét Trái/Phải để kiểm tra vật cản (độ)
+const float BACK_DISTANCE         = 25.0f;  // Quãng đường lùi bằng Encoder khi phát hiện chướng ngại vật (cm)
+const float TURN_ANGLE            = 45.0f;  // Góc quay đổi hướng né vật cản mặc định (độ)
+const unsigned long SCAN_DELAY    = 400;    // Thời gian chờ cảm biến ổn định khi dừng quét (ms)
+const uint8_t RECOVERY_LIMIT      = 3;      // Số lần thử lùi & quét tối đa trước khi Recovery 180 độ
+
 // --- Cấu hình Chống Mắc Kẹt (Stuck Prevention) ---
 const unsigned long AUTO_STUCK_TIMEOUT_MS  = 10000;// Thời gian tối đa không tiến lên được sẽ coi là mắc kẹt (10s)
 const uint8_t AUTO_RECOVERY_RETRY_LIMIT    = 3;    // Số lần thử Recovery tối đa trước khi báo lỗi về MANUAL
@@ -75,7 +83,7 @@ const uint8_t AUTO_RECOVERY_RETRY_LIMIT    = 3;    // Số lần thử Recovery 
 const unsigned long AUTO_IDLE_TIMEOUT_MS   = 30000;// Thời gian chờ tự động trong IDLE (ms)
 
 // --- Cấu hình Phản hồi Encoder & MPU6050 ---
-#define ENCODER_ENABLED            false    // Bật/Tắt phản hồi cân bằng tốc độ bánh bằng Encoder
+#define ENCODER_ENABLED            true     // Bật phản hồi cân bằng tốc độ bánh bằng Encoder
 
 // --- Cấu hình Phát hiện Va Chạm (Collision Detection via MPU6050) ---
 #define AUTO_COLLISION_ENABLED     true    // Bật/Tắt phát hiện va chạm bằng MPU6050

@@ -35,4 +35,6 @@ public:
     }
 };
 
+using TaskScheduler = Scheduler;
+
 #endif // SCHEDULER_H

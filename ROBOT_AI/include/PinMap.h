@@ -7,20 +7,20 @@
  */
 
 // --- Động cơ Front Left (FL) ---
-#define MOTOR_FL_RPWM 6
-#define MOTOR_FL_LPWM 7
+#define MOTOR_FL_RPWM 7
+#define MOTOR_FL_LPWM 6
 
 // --- Động cơ Front Right (FR) ---
-#define MOTOR_FR_RPWM 4
-#define MOTOR_FR_LPWM 5
+#define MOTOR_FR_RPWM 5
+#define MOTOR_FR_LPWM 4
 
 // --- Động cơ Rear Left (RL) ---
-#define MOTOR_RL_RPWM 8
-#define MOTOR_RL_LPWM 9
+#define MOTOR_RL_RPWM 9
+#define MOTOR_RL_LPWM 8
 
 // --- Động cơ Rear Right (RR) ---
-#define MOTOR_RR_RPWM 10
-#define MOTOR_RR_LPWM 11
+#define MOTOR_RR_RPWM 11
+#define MOTOR_RR_LPWM 10
 
 //================ HC-SR04 =================
 #define HC_FRONT_TRIG 16
@@ -39,6 +39,6 @@
 #define ENC_RR_B      36
 
 //================ BUZZER ==================
-#define MH_FMD_PIN    47
+#define MH_FMD_PIN    2
 
 #endif // PIN_MAP_H

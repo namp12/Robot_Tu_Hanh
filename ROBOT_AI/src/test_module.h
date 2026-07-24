@@ -38,4 +38,9 @@ bool is_sensor_isolated_mode();
 bool is_sensor_front_test_active();
 bool is_sensor_rear_test_active();
 
+/**
+ * @brief Xử lý tập trung các lệnh điều khiển chính, chuyển chế độ (1, 2, 3) và test module.
+ */
+void processMainCommand(String cmd);
+
 #endif // TEST_MODULE_H

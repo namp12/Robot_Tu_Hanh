@@ -226,8 +226,13 @@ float readSensor(const char* name, uint8_t trigPin, uint8_t echoPin) {
     delayMicroseconds(10);
     digitalWrite(trigPin, LOW);
 
-    // 3. Đo thời gian xung ECHO bằng pulseIn (timeout 15000us ~ 2.5m)
-    unsigned long duration = pulseIn(echoPin, HIGH, 15000);
+    // Bỏ qua ngay nếu chân Echo bị kẹt HIGH (chống block CPU)
+    if (digitalRead(echoPin) == HIGH) {
+        return -1.0f;
+    }
+
+    // 3. Đo thời gian xung ECHO bằng pulseIn (timeout 8000us ~ 1.37m, cực nhanh không block CPU)
+    unsigned long duration = pulseIn(echoPin, HIGH, 8000);
 
     // Cấu hình tần suất in debug: Chỉ in mỗi 5 giây một lần cho mỗi cảm biến
     static unsigned long last_print_front_time = 0;

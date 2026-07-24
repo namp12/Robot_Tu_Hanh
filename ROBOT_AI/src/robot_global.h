@@ -22,6 +22,7 @@ enum OperatingMode {
     MODE_AUTO,   ///< Chế độ chạy tự động tránh vật cản
     MODE_ROS2    ///< Chế độ nhận lệnh từ Raspberry Pi (ROS2 Mode)
 };
+#define MODE_ROS MODE_ROS2
 
 enum AutoState {
     AUTO_IDLE,           ///< Trạng thái chờ / tạm dừng

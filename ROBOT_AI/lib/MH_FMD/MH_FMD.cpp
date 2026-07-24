@@ -138,17 +138,21 @@ void MH_FMD_Update(float front, float rear) {
         manual_force_on = false;
     } 
     else if (manual_force_on) {
-        // Ưu tiên 1: Lệnh bật còi cưỡng bức bằng tay (ở chế độ này còi kêu liên tục)
-        // Vẫn giữ để phục vụ debug thủ công qua MH_FMD_On
-        // Có thể biến đổi nếu cần, nhưng còi cảnh báo tự động thì chỉ kêu bíp bíp
-        #if MH_FMD_ACTIVE_LEVEL == 1
-            digitalWrite(MH_FMD_PIN, HIGH);
-        #else
-            digitalWrite(MH_FMD_PIN, LOW);
-        #endif
-        physical_pin_state = true;
-        active_mode = BUZZER_OFF; // Bypass executeBuzzerMode
-        return;
+        // Ưu tiên 1: Lệnh bật còi cưỡng bức bằng tay (Có timeout 3s bảo vệ nguồn I2C/MPU6050)
+        if (now < beep_end_time) {
+            #if MH_FMD_ACTIVE_LEVEL == 1
+                digitalWrite(MH_FMD_PIN, HIGH);
+            #else
+                digitalWrite(MH_FMD_PIN, LOW);
+            #endif
+            physical_pin_state = true;
+            active_mode = BUZZER_OFF; // Bypass executeBuzzerMode
+            return;
+        } else {
+            manual_force_on = false;
+            digitalWrite(MH_FMD_PIN, BUZZER_OFF_LEVEL);
+            physical_pin_state = false;
+        }
     } 
     else if (is_beeping) {
         // Ưu tiên 2: Đang bíp hẹn giờ (Beep)
@@ -222,9 +226,10 @@ void MH_FMD_Update(float front, float rear) {
 
 void MH_FMD_On() {
     manual_force_on = true;
+    beep_end_time = millis() + 3000; // Tự động ngắt sau 3 giây để bảo vệ bus I2C của MPU6050
     is_beeping = false;
     is_testing = false;
-    Serial.println(F("📢 [MH-FMD Log] Kích hoạt còi thủ công (FORCED ON)"));
+    Serial.println(F("📢 [MH-FMD Log] Kích hoạt còi thủ công (FORCED ON 3s)"));
 }
 
 void MH_FMD_Off() {

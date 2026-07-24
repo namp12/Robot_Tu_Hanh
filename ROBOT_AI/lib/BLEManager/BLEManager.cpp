@@ -1,6 +1,7 @@
 #include "BLEManager.h"
-#include "Protocol/SerialProtocol.h"
-#include "Managers/CommandManager.h"
+#include "CommandParser.h"
+#include "motion_controller.h"
+#include "test_module.h"
 #include "robot_global.h"
 
 class ServerCallbacks : public NimBLEServerCallbacks {
@@ -30,11 +31,9 @@ class RXCallbacks : public NimBLECharacteristicCallbacks {
     }
 };
 
-BLEManager::BLEManager() 
-    : _pServer(nullptr), 
-      _pTxCharacteristic(nullptr), 
-      _pRxCharacteristic(nullptr), 
-      _isClientConnected(false) {}
+BLEManager::BLEManager()
+    : _pServer(nullptr), _pTxCharacteristic(nullptr), _pRxCharacteristic(nullptr), _isClientConnected(false) {
+}
 
 void BLEManager::begin() {
     NimBLEDevice::init("ESP32_Robot");
@@ -104,11 +103,11 @@ void BLEManager::update() {
 
         Serial.printf("[BLE RX] Command received: '%s'\n", incoming.c_str());
 
-        RobotCommand cmd;
-        if (SerialProtocol::getInstance().parseCommand(incoming, cmd)) {
-            CommandManager::getInstance().executeCommand(cmd);
+        CommandPacket pkt = CommandParser::getInstance().parse(incoming);
+        if (pkt.type == CMD_TYPE_MOVE) {
+            MotionController::getInstance().setManualCommand(pkt.moveDirection, pkt.moveSpeed);
         } else {
-            processCommand(incoming);
+            processMainCommand(incoming);
         }
     }
 }

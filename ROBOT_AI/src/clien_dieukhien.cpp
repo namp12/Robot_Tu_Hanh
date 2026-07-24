@@ -34,10 +34,7 @@ void clien_dieukhien_Init() {
 }
 
 void clien_dieukhien_Update() {
-    // 1. Kiểm tra và nhận diện lệnh từ Serial
-    checkSerial();
-    
-    // 2. Cập nhật tiến trình chạy thử động cơ nếu được kích hoạt
+    // Cập nhật tiến trình chạy thử động cơ nếu được kích hoạt
     updateMotorTest();
 }
 
@@ -51,8 +48,9 @@ void printHelp() {
     Serial.println(F("       [Q] Xoay Trái      -  [S] Lùi Lại      - [E] Xoay Phải"));
     Serial.println(F(" ------------------------------------------------------"));
     Serial.println(F(" ⚙️ LỆNH CHUYỂN CHẾ ĐỘ:"));
-    Serial.println(F("   auto / run / 2     -> Bật Chế độ 2: Tự Động (Xe tự tránh vật cản)"));
     Serial.println(F("   manual / man / m / 1 -> Bật Chế độ 1: Thủ Công (Người dùng lái)"));
+    Serial.println(F("   auto / run / 2       -> Bật Chế độ 2: Tự Động (Xe tự tránh vật cản)"));
+    Serial.println(F("   diagnose / test / 3  -> Bật Chế độ 3: Chẩn Đoán & Kiểm Tra các Module"));
     Serial.println(F(" ------------------------------------------------------"));
     Serial.println(F(" 📝 CÁC LỆNH ĐẦY ĐỦ (Nhập dạng: <lệnh> <tốc độ 0-255>):"));
     Serial.println(F("   tien <v> - lui <v> - trai <v> - phai <v> - dung"));
@@ -429,8 +427,8 @@ static std::string getNormalizedAction(const std::string& rawAction) {
         {"q", "xoay_trai"}, {"e", "xoay_phai"}, {"x", "dung"},
         {"z", "cheo_tt"}, {"c", "cheo_tp"},
         {"h", "help"},
-        {"m", "mode_manual"}, {"man", "mode_manual"}, {"manual", "mode_manual"},
-        {"run", "mode_auto"}, {"auto", "mode_auto"},
+        {"m", "mode_manual"}, {"man", "mode_manual"}, {"manual", "mode_manual"}, {"1", "mode_manual"},
+        {"run", "mode_auto"}, {"auto", "mode_auto"}, {"2", "mode_auto"},
         {"ros2", "mode_ros2"},
         {"st", "print_status"}, {"status", "print_status"},
         {"bp", "toggle_bypass"}, {"bypass", "toggle_bypass"},
@@ -445,6 +443,7 @@ static std::string getNormalizedAction(const std::string& rawAction) {
 
 void processCommand(String cmd) {
     cmd.trim();
+    if (cmd.length() == 0) return;
     String origCmd = cmd;
     cmd.toLowerCase();
 
