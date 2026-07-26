@@ -306,14 +306,14 @@ static void initCommandRegistry() {
         isAvoidanceActive = false;
         moveControl.stop();
         if (currentMode == MODE_AUTO) {
-            currentMode = MODE_MANUAL;
+            ModeManager::getInstance().setMode(MODE_MANUAL);
             Serial.println(F("   [AUTO] Đã dừng xe và tự động thoát về chế độ MANUAL."));
         }
         Serial.println(F("   DỪNG XE"));
     }};
 
     commandRegistry["mode_manual"] = {"Set Mode Manual", [](int, const String&) {
-        currentMode = MODE_MANUAL;
+        ModeManager::getInstance().setMode(MODE_MANUAL);
         isAvoidanceActive = false;
         currentMoveDir = "dung";
         currentSpeed = 0;
@@ -323,7 +323,7 @@ static void initCommandRegistry() {
     }};
 
     commandRegistry["mode_auto"] = {"Set Mode Auto", [](int, const String&) {
-        currentMode = MODE_AUTO;
+        ModeManager::getInstance().setMode(MODE_AUTO);
         isAvoidanceActive = false;
         autoModeStartTime = millis();
         auto_run_ResetState();
@@ -331,7 +331,7 @@ static void initCommandRegistry() {
     }};
 
     commandRegistry["mode_ros2"] = {"Set Mode ROS2", [](int, const String&) {
-        currentMode = MODE_ROS2;
+        ModeManager::getInstance().setMode(MODE_ROS);
         isAvoidanceActive = false;
         currentMoveDir = "dung";
         currentSpeed = 0;

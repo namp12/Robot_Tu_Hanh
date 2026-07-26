@@ -13,7 +13,7 @@ SensorManager& SensorManager::getInstance() {
 }
 
 SensorManager::SensorManager()
-    : _telemetryEnabled(false), _lastReadMs(0), _lastSendMs(0) {
+    : _telemetryEnabled(true), _lastReadMs(0), _lastSendMs(0) {
     _data = {0};
 }
 
