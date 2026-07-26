@@ -5,6 +5,7 @@
 
 #include "battery.h"
 #include "parameters.h"
+#include "PinMap.h"
 
 BatteryModule& BatteryModule::getInstance() {
     static BatteryModule instance;
@@ -12,7 +13,7 @@ BatteryModule& BatteryModule::getInstance() {
 }
 
 BatteryModule::BatteryModule()
-    : _pin(4), _voltage(12.6f), _percentage(100), _lastReadTime(0) {
+    : _pin(BATTERY_ADC_PIN), _voltage(12.6f), _percentage(100), _lastReadTime(0) {
 }
 
 void BatteryModule::begin(uint8_t adcPin) {

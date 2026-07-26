@@ -38,7 +38,8 @@
 #define ENC_RR_A      35
 #define ENC_RR_B      36
 
-//================ BUZZER ==================
-#define MH_FMD_PIN    2
+//================ BUZZER & BATTERY =========
+#define MH_FMD_PIN      2
+#define BATTERY_ADC_PIN 1
 
 #endif // PIN_MAP_H

@@ -6,6 +6,7 @@
 #include "SensorManager.h"
 #include "mode_manager.h"
 #include "safety.h"
+#include "PinMap.h"
 
 SensorManager& SensorManager::getInstance() {
     static SensorManager instance;
@@ -21,7 +22,7 @@ void SensorManager::begin() {
     EncoderModule::getInstance().begin();
     ImuModule::getInstance().begin(18, 19);
     DistanceModule::getInstance().begin();
-    BatteryModule::getInstance().begin(4);
+    BatteryModule::getInstance().begin(BATTERY_ADC_PIN);
 
     _lastReadMs = millis();
     _lastSendMs = millis();
@@ -52,7 +53,7 @@ void SensorManager::sendData() {
     if (!_telemetryEnabled) return;
 
     unsigned long now = millis();
-    if (now - _lastSendMs < 50) return; // Realtime 20Hz (50ms) chu kỳ phát Telemetry
+    if (now - _lastSendMs < 10000) return; // In Telemetry 10 giây / 1 lần (10000ms)
     _lastSendMs = now;
 
     const char* modeStr = ModeManager::getInstance().getModeString();

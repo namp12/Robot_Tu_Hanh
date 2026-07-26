@@ -12,13 +12,15 @@
 
 #include <Arduino.h>
 
+#include "PinMap.h"
+
 // =============================================================================
-// CẤU HÌNH PHẦN CỨNG - PIN ASSIGNMENTS
+// CẤU HÌNH PHẦN CỨNG - PIN ASSIGNMENTS (Lấy từ PinMap.h)
 // =============================================================================
-#define HC_SR04_FRONT_TRIG 37   ///< Chân TRIG cảm biến trước
-#define HC_SR04_FRONT_ECHO 38   ///< Chân ECHO cảm biến trước
-#define HC_SR04_REAR_TRIG  39   ///< Chân TRIG cảm biến sau
-#define HC_SR04_REAR_ECHO  40   ///< Chân ECHO cảm biến sau
+#define HC_SR04_FRONT_TRIG HC_FRONT_TRIG   ///< Chân TRIG cảm biến trước (GPIO 16)
+#define HC_SR04_FRONT_ECHO HC_FRONT_ECHO   ///< Chân ECHO cảm biến trước (GPIO 17)
+#define HC_SR04_REAR_TRIG  HC_REAR_TRIG    ///< Chân TRIG cảm biến sau (GPIO 14)
+#define HC_SR04_REAR_ECHO  HC_REAR_ECHO    ///< Chân ECHO cảm biến sau (GPIO 15)
 
 // =============================================================================
 // KHAI BÁO CÁC HÀM GIAO TIẾP (API)

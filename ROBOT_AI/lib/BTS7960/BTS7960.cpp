@@ -36,13 +36,8 @@ BTS7960::BTS7960(uint8_t rpwm, uint8_t lpwm, uint8_t ren, uint8_t len,
 // Helper: ghi PWM theo API của từng Core
 // =============================================
 void BTS7960::writePWM(uint8_t pin, uint8_t channel, uint8_t duty) {
-#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
-  // Core 3.x: dùng pin trực tiếp
-  ledcWrite(pin, duty);
-#else
-  // Core 2.x: dùng số kênh
-  ledcWrite(channel, duty);
-#endif
+  pinMode(pin, OUTPUT);
+  analogWrite(pin, duty);
 }
 
 // =============================================
