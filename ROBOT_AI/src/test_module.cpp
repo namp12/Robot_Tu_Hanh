@@ -6,6 +6,7 @@
 #include "test_module.h"
 #include "robot_global.h"
 #include "safety.h"
+#include "mode_manager.h"
 
 // Cấu hình chế độ chạy chính và kiểm tra chẩn đoán module
 enum MainMode {

@@ -94,5 +94,41 @@ CommandPacket CommandParser::parse(const String& line) {
         return packet;
     }
 
+    // 8. Phân tích trực tiếp các từ khóa lệnh di chuyển tiếng Việt (tien 150, lui 120, trai, phai, ...)
+    String lowerInput = input;
+    lowerInput.toLowerCase();
+    int spaceIndex = lowerInput.indexOf(' ');
+    String firstWord = (spaceIndex == -1) ? lowerInput : lowerInput.substring(0, spaceIndex);
+    int argSpeed = (spaceIndex == -1) ? 150 : lowerInput.substring(spaceIndex + 1).toInt();
+    if (argSpeed <= 0) argSpeed = 150;
+
+    if (firstWord == "tien" || firstWord == "w" ||
+        firstWord == "lui" || firstWord == "s" ||
+        firstWord == "trai" || firstWord == "a" ||
+        firstWord == "phai" || firstWord == "d" ||
+        firstWord == "xoay_trai" || firstWord == "q" ||
+        firstWord == "xoay_phai" || firstWord == "e" ||
+        firstWord == "cheo_tt" || firstWord == "z" ||
+        firstWord == "cheo_tp" || firstWord == "c" ||
+        firstWord == "cheo_st" || firstWord == "cheo_sp") {
+        
+        packet.type = CMD_TYPE_MOVE;
+        if (firstWord == "w") packet.moveDirection = "TIEN";
+        else if (firstWord == "s") packet.moveDirection = "LUI";
+        else if (firstWord == "a") packet.moveDirection = "TRAI";
+        else if (firstWord == "d") packet.moveDirection = "PHAI";
+        else if (firstWord == "q") packet.moveDirection = "XOAY_TRAI";
+        else if (firstWord == "e") packet.moveDirection = "XOAY_PHAI";
+        else if (firstWord == "z") packet.moveDirection = "CHEO_TT";
+        else if (firstWord == "c") packet.moveDirection = "CHEO_TP";
+        else {
+            packet.moveDirection = firstWord;
+            packet.moveDirection.toUpperCase();
+        }
+        packet.moveSpeed = argSpeed;
+        return packet;
+    }
+
     return packet;
 }
+

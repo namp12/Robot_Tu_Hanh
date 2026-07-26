@@ -9,7 +9,7 @@
 ROS2BridgeManager::ROS2BridgeManager()
     : _serial(&Serial), _lastTelemetryTime(0), _telemetryIntervalMs(20),
       _lastCmdVelTime(0), _watchdogTimeoutMs(500), _cmdVx(0.0f), _cmdVy(0.0f),
-      _cmdW(0.0f), _hasNewCmd(false), _isTelemetryEnabled(false) {
+      _cmdW(0.0f), _hasNewCmd(false), _isTelemetryEnabled(true) {
 }
 
 void ROS2BridgeManager::begin(HardwareSerial* serialPointer, uint16_t telemetryRateHz) {
@@ -25,128 +25,9 @@ void ROS2BridgeManager::begin(HardwareSerial* serialPointer, uint16_t telemetryR
 }
 
 void ROS2BridgeManager::update() {
-    unsigned long now = millis();
-
-    // 1. Read & decode Pi Serial
-    while (_serial->available()) {
-        uint8_t byteIn = (uint8_t)_serial->read();
-
-        // Tích lũy bộ đệm CLI nếu không trong chế độ nhận gói tin nhị phân
-        static String cliBuffer = "";
-        if (!_parser.isInPacket() && byteIn != ROS2_HEADER1) {
-            if (byteIn == '\n' || byteIn == '\r') {
-                if (cliBuffer.length() > 0) {
-                    processMainCommand(cliBuffer);
-                    cliBuffer = "";
-                }
-            } else if (byteIn >= 32 && byteIn <= 126) {
-                cliBuffer += (char)byteIn;
-                if (cliBuffer.length() > 60) {
-                    cliBuffer = "";
-                }
-            }
-        } else {
-            // Giải phóng bộ đệm nếu nhận được header của gói tin nhị phân
-            cliBuffer = "";
-        }
-
-        uint8_t msgId = 0;
-        uint8_t payloadLen = 0;
-
-        if (_parser.parseByte(byteIn, msgId, _rxPayloadBuffer, payloadLen)) {
-            // Tự động bật phát dữ liệu phản hồi (telemetry) khi có thiết bị kết nối truyền lệnh nhị phân
-            _isTelemetryEnabled = true;
-
-            switch (msgId) {
-                case MSG_ID_CMD_VEL: {
-                    if (payloadLen == sizeof(CmdVelPayload)) {
-                        CmdVelPayload cmd;
-                        memcpy(&cmd, _rxPayloadBuffer, sizeof(CmdVelPayload));
-                        _cmdVx = cmd.linear_x;
-                        _cmdVy = cmd.linear_y;
-                        _cmdW  = cmd.angular_z;
-                        _lastCmdVelTime = now;
-
-                        if (ModeManager::getInstance().getMode() == MODE_MANUAL) {
-                            ModeManager::getInstance().setMode(MODE_ROS);
-                        }
-
-                        if (ModeManager::getInstance().getMode() == MODE_ROS) {
-                            MotionController::getInstance().setTargetVelocity(_cmdVx, _cmdVy, _cmdW);
-                            currentMoveDir = "ROS2 cmd_vel";
-                            _hasNewCmd = true;
-                        }
-                    }
-                    break;
-                }
-
-                case MSG_ID_SET_MODE: {
-                    if (payloadLen == sizeof(SetModePayload)) {
-                        SetModePayload modePayload;
-                        memcpy(&modePayload, _rxPayloadBuffer, sizeof(SetModePayload));
-
-                        if (modePayload.target_mode == 0) {
-                            ModeManager::getInstance().setMode(MODE_MANUAL);
-                            currentMoveDir = "dung (Manual via ROS2)";
-                            currentSpeed = 0;
-                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_MANUAL"));
-                        } else if (modePayload.target_mode == 1) {
-                            ModeManager::getInstance().setMode(MODE_AUTO);
-                            autoModeStartTime = millis();
-                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_AUTO"));
-                        } else if (modePayload.target_mode == 2) {
-                            ModeManager::getInstance().setMode(MODE_ROS);
-                            _lastCmdVelTime = now;
-                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_ROS (MAY TINH LAI)"));
-                        }
-
-                        if (modePayload.e_stop == 1) {
-                            SafetyMonitor::getInstance().emergencyStop("ROS2 E-Stop");
-                        } else {
-                            SafetyMonitor::getInstance().clearEmergencyStop();
-                        }
-                    }
-                    break;
-                }
-
-                case MSG_ID_RESET_GOC: {
-                    mpu.resetAngle();
-                    Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau reset goc Yaw MPU6050 ve 0"));
-                    break;
-                }
-
-                case MSG_ID_TRIGGER_BEEP: {
-                    MH_FMD_Beep(500);
-                    Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau coi keu (Beep)"));
-                    break;
-                }
-            }
-        }
-    }
-
-    // 2. Watchdog Safety Stop
-    if (ModeManager::getInstance().getMode() == MODE_ROS && !SafetyMonitor::getInstance().isEmergencyStop()) {
-        if (now - _lastCmdVelTime > _watchdogTimeoutMs) {
-            MotionController::getInstance().stop();
-            currentMoveDir = "DUNG KHAN (SERIAL TIMEOUT)";
-            currentSpeed = 0;
-            SafetyMonitor::getInstance().feedWatchdog();
-            static unsigned long lastWarnTime = 0;
-            if (now - lastWarnTime > 2000) {
-                lastWarnTime = now;
-                Serial.println(F("⚠️ [ROS2 WATCHDOG] Mat tin hieu cmd_vel qua 500ms! Da tu dong DUNG XE khan cap."));
-            }
-        }
-    }
-
-    // 3. Publish Status / Send Telemetry at 50Hz
-    if (now - _lastTelemetryTime >= _telemetryIntervalMs) {
-        _lastTelemetryTime = now;
-        if (_isTelemetryEnabled) {
-            sendTelemetry();
-        }
-    }
+    // Tất cả truyền thông Serial (ASCII Text Protocol) được xử lý tập trung thống nhất bởi SerialProtocol
 }
+
 
 bool ROS2BridgeManager::sendTelemetry(const TelemetryData& data) {
     TelemetryPayload payload;

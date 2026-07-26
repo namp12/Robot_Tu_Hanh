@@ -9,6 +9,7 @@
 #include <functional>
 #include "MovementController.h"
 #include "safety.h"
+#include "mode_manager.h"
 
 // =============================================================================
 // BIẾN NỘI BỘ (INTERNAL VARIABLES)
@@ -406,7 +407,7 @@ static std::string getNormalizedAction(const std::string& rawAction) {
         {"h", "help"},
         {"m", "mode_manual"}, {"man", "mode_manual"}, {"manual", "mode_manual"}, {"1", "mode_manual"},
         {"run", "mode_auto"}, {"auto", "mode_auto"}, {"2", "mode_auto"},
-        {"ros2", "mode_ros2"},
+        {"ros2", "mode_ros2"}, {"ros", "mode_ros2"}, {"3", "mode_ros2"},
         {"st", "print_status"}, {"status", "print_status"},
         {"bp", "toggle_bypass"}, {"bypass", "toggle_bypass"},
         {"t", "telemetry"}, {"telemetry", "telemetry"}

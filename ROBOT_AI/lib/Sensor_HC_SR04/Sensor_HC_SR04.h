@@ -12,12 +12,13 @@
 
 #include <Arduino.h>
 
-#include "PinMap.h"
-
-#define HC_SR04_FRONT_TRIG HC_FRONT_TRIG   ///< Chân TRIG cảm biến trước
-#define HC_SR04_FRONT_ECHO HC_FRONT_ECHO   ///< Chân ECHO cảm biến trước
-#define HC_SR04_REAR_TRIG  HC_REAR_TRIG    ///< Chân TRIG cảm biến sau
-#define HC_SR04_REAR_ECHO  HC_REAR_ECHO    ///< Chân ECHO cảm biến sau
+// =============================================================================
+// CẤU HÌNH PHẦN CỨNG - PIN ASSIGNMENTS
+// =============================================================================
+#define HC_SR04_FRONT_TRIG 37   ///< Chân TRIG cảm biến trước
+#define HC_SR04_FRONT_ECHO 38   ///< Chân ECHO cảm biến trước
+#define HC_SR04_REAR_TRIG  39   ///< Chân TRIG cảm biến sau
+#define HC_SR04_REAR_ECHO  40   ///< Chân ECHO cảm biến sau
 
 // =============================================================================
 // KHAI BÁO CÁC HÀM GIAO TIẾP (API)
@@ -37,14 +38,19 @@ float readSensor(const char* name, uint8_t trigPin, uint8_t echoPin);
  * Cấu hình chân GPIO, gắn ngắt ngoài cho chân ECHO và khởi tạo các biến.
  */
 void HC_SR04_Init();
-void HC_SR04_ResetBuffer();
 
 /**
- * @brief Cập nhật trạng thái đọc của cảm biến siêu âm phía trước.
+ * @brief Cập nhật trạng thái đọc của các cảm biến siêu âm.
+ * Chạy máy trạng thái (State Machine) luân phiên đọc cảm biến trước/sau không block CPU.
  * Cần được gọi liên tục trong vòng lặp loop() chính của chương trình.
  */
 void HC_SR04_Update(bool updateFront = true, bool updateRear = true);
 
+/**
+ * @brief Kích hoạt chế độ kiểm tra cho cảm biến chỉ định.
+ * @param sensorSelect 0 cho cảm biến trước, 1 cho cảm biến sau.
+ */
+void HC_SR04_TestMode(int sensorSelect);
 void HC_SR04_TestGPIO();
 void HC_SR04_TestTrigger(bool triggerFront = true, bool triggerRear = true);
 void HC_SR04_CheckConflicts();
@@ -88,7 +94,7 @@ bool HC_SR04_FrontObstacle(float cm);
 bool HC_SR04_RearObstacle(float cm);
 
 /**
- * @brief Kiểm tra xem phía trước hoặc phía sau có vật cản dưới ngưỡng xác định hay không.
+ * @brief Kiểm tra xem phía trước HOẶC phía sau có vật cản dưới ngưỡng xác định hay không.
  * @param cm Ngưỡng khoảng cách cần kiểm tra (cm)
  * @return true nếu có vật cản, ngược lại là false.
  */
@@ -105,6 +111,12 @@ bool HC_SR04_FrontOnline();
  * @return true nếu hoạt động bình thường, false nếu mất kết nối.
  */
 bool HC_SR04_RearOnline();
+
+/**
+ * @brief Kiểm tra xem cả hai cảm biến có đang online hay không.
+ * @return true nếu cả hai hoạt động bình thường.
+ */
+bool HC_SR04_AllOnline();
 
 /**
  * @brief Cấu hình khoảng cách cảnh báo mặc định.
