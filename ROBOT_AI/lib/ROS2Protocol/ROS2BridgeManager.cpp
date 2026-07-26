@@ -2,6 +2,7 @@
 #include "robot_global.h"
 #include "SensorManager/SensorManager.h"
 #include "motion_controller.h"
+#include "mode_manager.h"
 #include "safety.h"
 #include "test_module.h"
 
@@ -71,7 +72,7 @@ void ROS2BridgeManager::update() {
                         }
 
                         if (ModeManager::getInstance().getMode() == MODE_ROS) {
-                            motionController.setTargetVelocity(_cmdVx, _cmdVy, _cmdW);
+                            MotionController::getInstance().setTargetVelocity(_cmdVx, _cmdVy, _cmdW);
                             currentMoveDir = "ROS2 cmd_vel";
                             _hasNewCmd = true;
                         }
@@ -126,7 +127,7 @@ void ROS2BridgeManager::update() {
     // 2. Watchdog Safety Stop
     if (ModeManager::getInstance().getMode() == MODE_ROS && !SafetyMonitor::getInstance().isEmergencyStop()) {
         if (now - _lastCmdVelTime > _watchdogTimeoutMs) {
-            motionController.stop();
+            MotionController::getInstance().stop();
             currentMoveDir = "DUNG KHAN (SERIAL TIMEOUT)";
             currentSpeed = 0;
             SafetyMonitor::getInstance().feedWatchdog();

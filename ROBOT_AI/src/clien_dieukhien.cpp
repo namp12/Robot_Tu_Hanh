@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <functional>
 #include "MovementController.h"
+#include "safety.h"
 
 // =============================================================================
 // BIẾN NỘI BỘ (INTERNAL VARIABLES)

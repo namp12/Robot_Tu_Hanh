@@ -10,6 +10,7 @@
 #include "battery.h"
 #include "imu.h"
 #include "robot_global.h"
+#include "MovementController.h"
 
 SafetyMonitor& SafetyMonitor::getInstance() {
     static SafetyMonitor instance;
@@ -50,7 +51,6 @@ void SafetyMonitor::emergencyStop(const char* reason) {
         _allowRotate = false;
         car.stop();
         moveControl.stop();
-        motionController.stop();
         Serial.printf("🛑 [SafetyMonitor] PHANH KHẨN CẤP! Lý do: %s\n", reason);
     }
 }

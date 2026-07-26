@@ -5,6 +5,7 @@
 #include "SensorManager/SensorManager.h"
 #include "MotionHandlers/MotionHandlers.h"
 #include "Kinematics.h"
+#include "safety.h"
 
 void MovementController::move(float linear_x, float linear_y, float angular_z) {
     if (_isEStopActive) {
