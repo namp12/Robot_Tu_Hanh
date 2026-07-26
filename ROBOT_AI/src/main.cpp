@@ -128,6 +128,7 @@ void loop() {
 
     // 4. Cập nhật trạng thái Mode (MANUAL, AUTO, ROS)
     // Mode chỉ quyết định nguồn lệnh lái, KHÔNG ảnh hưởng đọc cảm biến
+    test_module_Update();
     clien_dieukhien_Update();
     auto_run_Update();
 

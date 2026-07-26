@@ -1,21 +1,14 @@
 #include "ROS2BridgeManager.h"
 #include "robot_global.h"
 #include "SensorManager/SensorManager.h"
-#include "MovementController.h"
+#include "motion_controller.h"
+#include "safety.h"
 #include "test_module.h"
 
-ROS2BridgeManager::ROS2BridgeManager() {
-    _serial = &Serial;
-    _lastTelemetryTime = 0;
-    _telemetryIntervalMs = 20; // 50Hz
-    _lastCmdVelTime = 0;
-    _watchdogTimeoutMs = 500;  // 500ms timeout
-    _isEStopActive = false;
-    _cmdVx = 0.0f;
-    _cmdVy = 0.0f;
-    _cmdW = 0.0f;
-    _hasNewCmd = false;
-    _isTelemetryEnabled = false;
+ROS2BridgeManager::ROS2BridgeManager()
+    : _serial(&Serial), _lastTelemetryTime(0), _telemetryIntervalMs(20),
+      _lastCmdVelTime(0), _watchdogTimeoutMs(500), _cmdVx(0.0f), _cmdVy(0.0f),
+      _cmdW(0.0f), _hasNewCmd(false), _isTelemetryEnabled(false) {
 }
 
 void ROS2BridgeManager::begin(HardwareSerial* serialPointer, uint16_t telemetryRateHz) {
@@ -73,30 +66,14 @@ void ROS2BridgeManager::update() {
                         _cmdW  = cmd.angular_z;
                         _lastCmdVelTime = now;
 
-                        // Convert geometry_msgs/Twist to standard MotionCommand
-                        _latestCmd.timestamp = now;
-                        _latestCmd.vx = _cmdVx;
-                        _latestCmd.vy = _cmdVy;
-                        _latestCmd.wz = _cmdW;
-                        _latestCmd.brake = false;
-                        _latestCmd.emergency_stop = _isEStopActive;
-                        
-                        if (abs(_cmdVx) < 0.001f && abs(_cmdVy) < 0.001f && abs(_cmdW) < 0.001f) {
-                            _latestCmd.type = MOTION_STOP;
-                            _latestCmd.speed = 0;
-                        } else {
-                            _latestCmd.type = MOTION_STRAFE;
-                            float velocity = sqrt(_cmdVx*_cmdVx + _cmdVy*_cmdVy);
-                            _latestCmd.speed = constrain((int)(velocity * 510.0f + abs(_cmdW) * 150.0f), 0, 255);
+                        if (ModeManager::getInstance().getMode() == MODE_MANUAL) {
+                            ModeManager::getInstance().setMode(MODE_ROS);
                         }
-                        _latestCmd.acceleration = 1000;
-                        _hasNewCmd = true;
 
-                        // Execute cmd via MovementController if in MODE_ROS2
-                        if (currentMode == MODE_ROS2 && !_isEStopActive) {
-                            moveControl.handleCommand(_latestCmd);
+                        if (ModeManager::getInstance().getMode() == MODE_ROS) {
+                            motionController.setTargetVelocity(_cmdVx, _cmdVy, _cmdW);
                             currentMoveDir = "ROS2 cmd_vel";
-                            currentSpeed = _latestCmd.speed;
+                            _hasNewCmd = true;
                         }
                     }
                     break;
@@ -108,25 +85,24 @@ void ROS2BridgeManager::update() {
                         memcpy(&modePayload, _rxPayloadBuffer, sizeof(SetModePayload));
 
                         if (modePayload.target_mode == 0) {
-                            currentMode = MODE_MANUAL;
-                            moveControl.stop();
+                            ModeManager::getInstance().setMode(MODE_MANUAL);
                             currentMoveDir = "dung (Manual via ROS2)";
                             currentSpeed = 0;
                             Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_MANUAL"));
                         } else if (modePayload.target_mode == 1) {
-                            currentMode = MODE_AUTO;
+                            ModeManager::getInstance().setMode(MODE_AUTO);
                             autoModeStartTime = millis();
                             Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_AUTO"));
                         } else if (modePayload.target_mode == 2) {
-                            currentMode = MODE_ROS2;
+                            ModeManager::getInstance().setMode(MODE_ROS);
                             _lastCmdVelTime = now;
-                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_ROS2 (MAY TINH LAI)"));
+                            Serial.println(F("📢 [ROS2 Protocol] Raspberry Pi yeu cau chuyen sang MODE_ROS (MAY TINH LAI)"));
                         }
 
                         if (modePayload.e_stop == 1) {
-                            setEmergencyStop(true);
-                        } else if (modePayload.e_stop == 0 && _isEStopActive) {
-                            setEmergencyStop(false);
+                            SafetyMonitor::getInstance().emergencyStop("ROS2 E-Stop");
+                        } else {
+                            SafetyMonitor::getInstance().clearEmergencyStop();
                         }
                     }
                     break;
@@ -148,11 +124,12 @@ void ROS2BridgeManager::update() {
     }
 
     // 2. Watchdog Safety Stop
-    if (currentMode == MODE_ROS2 && !_isEStopActive) {
+    if (ModeManager::getInstance().getMode() == MODE_ROS && !SafetyMonitor::getInstance().isEmergencyStop()) {
         if (now - _lastCmdVelTime > _watchdogTimeoutMs) {
-            moveControl.stop();
+            motionController.stop();
             currentMoveDir = "DUNG KHAN (SERIAL TIMEOUT)";
             currentSpeed = 0;
+            SafetyMonitor::getInstance().feedWatchdog();
             static unsigned long lastWarnTime = 0;
             if (now - lastWarnTime > 2000) {
                 lastWarnTime = now;
@@ -226,7 +203,7 @@ void ROS2BridgeManager::sendTelemetry() {
     if (mpuOk) data.flags |= (1 << 0);
     if (HC_SR04_FrontOnline()) data.flags |= (1 << 1);
     if (HC_SR04_RearOnline()) data.flags |= (1 << 2);
-    if (_isEStopActive) data.flags |= (1 << 3);
+    if (SafetyMonitor::getInstance().isEmergencyStop()) data.flags |= (1 << 3);
 
     sendTelemetry(data);
 }
@@ -245,20 +222,15 @@ void ROS2BridgeManager::publishStatus() {
 }
 
 void ROS2BridgeManager::setEmergencyStop(bool enable) {
-    _isEStopActive = enable;
-    if (_isEStopActive) {
-        moveControl.stop();
-        currentMoveDir = "E-STOP ACTIVATED";
-        currentSpeed = 0;
-        MH_FMD_Beep(500);
-        Serial.println(F("🚨 [ROS2 E-STOP] Da KICH HOAT dung khan cap!"));
+    if (enable) {
+        SafetyMonitor::getInstance().emergencyStop("ROS2 E-Stop");
     } else {
-        Serial.println(F("✅ [ROS2 E-STOP] Da HUY BO dung khan cap. System Ready."));
+        SafetyMonitor::getInstance().clearEmergencyStop();
     }
 }
 
 bool ROS2BridgeManager::isEmergencyStop() const {
-    return _isEStopActive;
+    return SafetyMonitor::getInstance().isEmergencyStop();
 }
 
 unsigned long ROS2BridgeManager::getLastCmdTime() const {

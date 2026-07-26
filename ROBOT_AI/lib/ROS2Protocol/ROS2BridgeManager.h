@@ -18,7 +18,6 @@ private:
 
     unsigned long _lastCmdVelTime;
     unsigned long _watchdogTimeoutMs;  // Mặc định 500ms
-    bool _isEStopActive;
 
     uint8_t _txBuffer[128];
     uint8_t _rxPayloadBuffer[64];

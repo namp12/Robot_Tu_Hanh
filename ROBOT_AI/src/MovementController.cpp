@@ -291,7 +291,8 @@ void MovementController::resetPID() {
 }
 
 void MovementController::update() {
-    if (_isEStopActive) {
+    SafetyMonitor& safety = SafetyMonitor::getInstance();
+    if (_isEStopActive || safety.isEmergencyStop()) {
         _car.stop();
         _currentRampedSpeed = 0;
         return;
@@ -316,7 +317,33 @@ void MovementController::update() {
         yawCorrection = _yawPID.calculate(_targetYaw, sensorData.yaw, dt);
     }
 
-    // 4. Dispatch using Lookup Map
+    // 4. KIỂM TRA AN TOÀN TRƯỚC KHI XUẤT PWM
+    if (_currentCmd.type == MOTION_FORWARD && !safety.canMoveForward()) {
+        _currentCmd.type = MOTION_STOP;
+        _currentCmd.speed = 0;
+        _targetSpeed = 0;
+        _currentRampedSpeed = 0;
+    }
+    if (_currentCmd.type == MOTION_BACKWARD && !safety.canMoveBackward()) {
+        _currentCmd.type = MOTION_STOP;
+        _currentCmd.speed = 0;
+        _targetSpeed = 0;
+        _currentRampedSpeed = 0;
+    }
+    if ((_currentCmd.type == MOTION_LEFT || _currentCmd.type == MOTION_RIGHT) && !safety.canStrafe()) {
+        _currentCmd.type = MOTION_STOP;
+        _currentCmd.speed = 0;
+        _targetSpeed = 0;
+        _currentRampedSpeed = 0;
+    }
+    if ((_currentCmd.type == MOTION_ROTATE_LEFT || _currentCmd.type == MOTION_ROTATE_RIGHT) && !safety.canRotate()) {
+        _currentCmd.type = MOTION_STOP;
+        _currentCmd.speed = 0;
+        _targetSpeed = 0;
+        _currentRampedSpeed = 0;
+    }
+
+    // 5. Dispatch using Lookup Map
     auto it = _commandRegistry.find((int)_currentCmd.type);
     if (it != _commandRegistry.end() && it->second != nullptr) {
         it->second->execute(_currentCmd, _car, yawCorrection);

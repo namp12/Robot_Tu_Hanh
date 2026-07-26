@@ -153,22 +153,7 @@ void test_module_Init() {
 // Xử lý lệnh
 void processMainCommand(String cmd);
 
-static String mainInputString = "";
 void test_module_Update() {
-    while (Serial.available()) {
-        char c = (char)Serial.read();
-        if (c == '\n' || c == '\r') {
-            if (mainInputString.length() > 0) {
-                mainInputString.trim();
-                processMainCommand(mainInputString);
-                mainInputString = "";
-            }
-        } else {
-            mainInputString += c;
-        }
-    }
-
-    // Tự động in kết quả siêu âm cách biệt mỗi 1000ms khi ở chế độ cô lập
     static unsigned long lastIsolatedPrint = 0;
     if ((activeTestModule == TEST_SENSOR_HC_SR04_FRONT || activeTestModule == TEST_SENSOR_HC_SR04_REAR) && runSensorUpdate) {
         unsigned long now = millis();
@@ -206,6 +191,7 @@ void processMainCommand(String cmd) {
         waitingForMainMenuChoice = false;
         HC_SR04_SetDebug(false);
         car.stop();
+        SafetyMonitor::getInstance().clearEmergencyStop();
         Serial.println(F("\n📢 [System] Đã chuyển sang Chế độ 1: ĐIỀU KHIỂN BẰNG TAY (MANUAL)"));
         printHelp();
         return;
@@ -218,6 +204,7 @@ void processMainCommand(String cmd) {
         HC_SR04_SetDebug(false);
         autoModeStartTime = millis();
         car.stop();
+        SafetyMonitor::getInstance().clearEmergencyStop();
         Serial.println(F("\n📢 [System] Đã chuyển sang Chế độ 2: CHẠY TỰ ĐỘNG TRÁNH VẬT CẢN (AUTO)"));
         printHelp();
         return;
@@ -229,6 +216,7 @@ void processMainCommand(String cmd) {
         waitingForMainMenuChoice = false;
         HC_SR04_SetDebug(false);
         car.stop();
+        SafetyMonitor::getInstance().clearEmergencyStop();
         Serial.println(F("\n📢 [System] Đã chuyển sang Chế độ 3: CHẨN ĐOÁN & KIỂM TRA CÁC MODULE"));
         printModuleTestMenu();
         return;
@@ -240,13 +228,14 @@ void processMainCommand(String cmd) {
             currentMainMode = MAIN_MODE_MANUAL;
             currentMode = MODE_MANUAL;
             waitingForMainMenuChoice = false;
+            SafetyMonitor::getInstance().clearEmergencyStop();
             Serial.println(F("\n📢 [System] Đã chuyển sang Chế độ 1: ĐIỀU KHIỂN BẰNG TAY (MANUAL)"));
             printHelp();
         } else if (action == "2" || action == "auto" || action == "run") {
             currentMainMode = MAIN_MODE_AUTO;
             currentMode = MODE_AUTO;
             waitingForMainMenuChoice = false;
-            autoModeStartTime = millis();
+            SafetyMonitor::getInstance().clearEmergencyStop();
             Serial.println(F("\n📢 [System] Đã chuyển sang Chế độ 2: CHẠY TỰ ĐỘNG TRÁNH VẬT CẢN (AUTO)"));
             printHelp();
         } else {
@@ -425,6 +414,7 @@ void processMainCommand(String cmd) {
             currentMode = MODE_MANUAL;
             activeTestModule = TEST_NONE;
             car.stop();
+            SafetyMonitor::getInstance().clearEmergencyStop();
             Serial.println(F("\n📢 [System] Đã chuyển sang Chế độ 3: CHẨN ĐOÁN & KIỂM TRA CÁC MODULE"));
             printModuleTestMenu();
             return;
@@ -434,6 +424,7 @@ void processMainCommand(String cmd) {
             currentMode = MODE_MANUAL;
             isAvoidanceActive = false;
             car.stop();
+            SafetyMonitor::getInstance().clearEmergencyStop();
             Serial.println(F("\n📢 [System] Đã chuyển sang Chế độ 1: ĐIỀU KHIỂN BẰNG TAY (MANUAL)"));
             printHelp();
             return;
@@ -443,6 +434,7 @@ void processMainCommand(String cmd) {
             currentMode = MODE_AUTO;
             isAvoidanceActive = false;
             autoModeStartTime = millis();
+            SafetyMonitor::getInstance().clearEmergencyStop();
             Serial.println(F("\n📢 [System] Đã chuyển sang Chế độ 2: CHẠY TỰ ĐỘNG TRÁNH VẬT CẢN (AUTO)"));
             printHelp();
             return;

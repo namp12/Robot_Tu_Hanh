@@ -5,6 +5,7 @@
 
 #include "mode_manager.h"
 #include "robot_global.h"
+#include "safety.h"
 
 ModeManager& ModeManager::getInstance() {
     static ModeManager instance;
@@ -31,6 +32,7 @@ bool ModeManager::setMode(OperatingMode mode) {
     } else if (mode == MODE_MANUAL || mode == MODE_ROS) {
         car.stop();
     }
+    SafetyMonitor::getInstance().clearEmergencyStop();
     return true;
 }
 

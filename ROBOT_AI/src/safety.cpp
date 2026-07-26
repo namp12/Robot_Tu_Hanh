@@ -49,6 +49,8 @@ void SafetyMonitor::emergencyStop(const char* reason) {
         _allowStrafe = false;
         _allowRotate = false;
         car.stop();
+        moveControl.stop();
+        motionController.stop();
         Serial.printf("🛑 [SafetyMonitor] PHANH KHẨN CẤP! Lý do: %s\n", reason);
     }
 }
@@ -95,10 +97,18 @@ void SafetyMonitor::update() {
         return;
     }
 
-    // 2. Kiểm tra lỗi phần cứng IMU
-    if (!ImuModule::getInstance().isOnline()) {
-        emergencyStop("IMU Fault / Offline");
-        return;
+    // 2. Kiểm tra lỗi phần cứng IMU - chỉ cảnh báo, không cấm di chuyển ở MANUAL để test motor
+    bool imuOnline = ImuModule::getInstance().isOnline();
+    if (!imuOnline) {
+        if (ModeManager::getInstance().getMode() != MODE_MANUAL) {
+            emergencyStop("IMU Fault / Offline");
+            return;
+        }
+        static unsigned long lastImuWarn = 0;
+        if (now - lastImuWarn > 2000) {
+            lastImuWarn = now;
+            Serial.println(F("⚠️ [SafetyMonitor] IMU offline - cho phép di chuyển ở MANUAL để test"));
+        }
     }
 
     // 3. Serial Watchdog Timeout ở MODE_ROS (Ví dụ: > 500ms không nhận cmd_vel)

@@ -10,6 +10,11 @@ struct SensorData {
     float front_distance = 450.0f, rear_distance = 450.0f;
     long encoder_fl = 0, encoder_fr = 0, encoder_rl = 0, encoder_rr = 0;
     float battery_voltage = 12.0f;
+    float totalDistance = 0.0f;
+    float batteryPercentage = 100.0f;
+    bool imuOnline = false;
+    bool frontOnline = false;
+    bool rearOnline = false;
 };
 
 class SensorManager {

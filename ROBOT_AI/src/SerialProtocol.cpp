@@ -75,7 +75,7 @@ void SerialProtocol::update() {
                 break;
 
             case CMD_TYPE_STOP:
-                MotionController::getInstance().stop();
+                processMainCommand("dung");
                 SafetyMonitor::getInstance().feedWatchdog();
                 Serial.println(F("🤖 [SerialProtocol] Đã nhận lệnh STOP!"));
                 break;
@@ -103,7 +103,10 @@ void SerialProtocol::update() {
 
             case CMD_TYPE_MOVE:
                 SafetyMonitor::getInstance().feedWatchdog();
-                if (ModeManager::getInstance().getMode() == MODE_MANUAL || ModeManager::getInstance().getMode() == MODE_ROS) {
+                if (ModeManager::getInstance().getMode() == MODE_MANUAL) {
+                    String legacyCmd = String(cmd.moveDirection) + " " + String(cmd.moveSpeed);
+                    processMainCommand(legacyCmd);
+                } else if (ModeManager::getInstance().getMode() == MODE_ROS) {
                     MotionController::getInstance().setManualCommand(cmd.moveDirection, cmd.moveSpeed);
                 }
                 break;

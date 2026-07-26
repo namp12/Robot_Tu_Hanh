@@ -12,29 +12,21 @@
 // =============================================================================
 // BIẾN NỘI BỘ (INTERNAL VARIABLES)
 // =============================================================================
-static String inputString = "";
-static bool stringComplete = false;
 
 // Trạng thái chạy thử động cơ
 static bool isTestingMotors = false;
 static uint8_t testStep = 0;
 static unsigned long lastTestStepTime = 0;
 
-// Khai báo hàm checkSerial nội bộ
-static void checkSerial();
-
 // =============================================================================
 // APIS IMPLEMENTATION
 // =============================================================================
 
 void clien_dieukhien_Init() {
-    inputString.reserve(30);
-    stringComplete = false;
     isTestingMotors = false;
 }
 
 void clien_dieukhien_Update() {
-    // Cập nhật tiến trình chạy thử động cơ nếu được kích hoạt
     updateMotorTest();
 }
 
@@ -187,23 +179,6 @@ void updateMotorTest() {
 // CÁC HÀM NỘI BỘ (INTERNAL HELPERS)
 // =============================================================================
 
-static void checkSerial() {
-    while (Serial.available()) {
-        char c = (char)Serial.read();
-        if (c == '\n' || c == '\r') {
-            if (inputString.length() > 0) stringComplete = true;
-        } else {
-            inputString += c;
-        }
-    }
-
-    if (stringComplete) {
-        processCommand(inputString);
-        inputString = "";
-        stringComplete = false;
-    }
-}
-
 struct ManualCommand {
     String actionName;
     std::function<void(int, const String&)> handler;
@@ -342,6 +317,7 @@ static void initCommandRegistry() {
         currentMoveDir = "dung";
         currentSpeed = 0;
         moveControl.stop();
+        SafetyMonitor::getInstance().clearEmergencyStop();
         Serial.println(F("   [System] Đã chuyển sang chế độ MANUAL (THỦ CÔNG). Đã dừng xe."));
     }};
 
