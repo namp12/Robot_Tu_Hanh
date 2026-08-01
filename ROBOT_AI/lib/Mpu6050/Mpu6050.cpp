@@ -1,4 +1,4 @@
-#include "MPU6050.h"
+#include "Mpu6050.h"
 
 MPU6050Sensor::MPU6050Sensor()
 {
@@ -77,12 +77,23 @@ void MPU6050Sensor::update()
     float dt = (currentTime - previousTime) / 1000.0f;
     previousTime = currentTime;
 
+    // Giới hạn dt tránh nhảy vọt dữ liệu nếu vòng lặp bị trễ hoặc khi khởi động
+    if (dt <= 0.0f || dt > 0.1f) dt = 0.02f;
+
     // Trừ offset tĩnh và áp dụng lọc vùng chết (Deadband Filter)
     float gZ = gyroZ - gyroZOffset;
     if (fabs(gZ) < 0.02f) gZ = 0.0f;
 
-    roll  += gyroX * 57.2958f * dt;
-    pitch += gyroY * 57.2958f * dt;
+    // Tính toán góc nghiêng từ Gia tốc kế (Accelerometer) làm mốc tham chiếu
+    float rollAccel = atan2(accelY, accelZ) * 57.2958f;
+    float pitchAccel = atan2(-accelX, sqrt(accelY * accelY + accelZ * accelZ)) * 57.2958f;
+
+    // Bộ lọc bù (Complementary Filter): Kết hợp 98% Con quay hồi chuyển (tính phản ứng nhanh)
+    // và 2% Gia tốc kế (ổn định lâu dài, không trôi) để tính Roll và Pitch
+    roll  = 0.98f * (roll + gyroX * 57.2958f * dt) + 0.02f * rollAccel;
+    pitch = 0.98f * (pitch + gyroY * 57.2958f * dt) + 0.02f * pitchAccel;
+
+    // Trục Yaw chỉ có thể tích lũy từ Gyro (được khử trôi bằng deadband ở trên)
     yaw   += gZ * 57.2958f * dt;
 }
 

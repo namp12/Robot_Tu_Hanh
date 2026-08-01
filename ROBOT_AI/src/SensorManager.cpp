@@ -53,7 +53,44 @@ void SensorManager::sendData() {
     if (!_telemetryEnabled) return;
 
     unsigned long now = millis();
-    if (now - _lastSendMs < 10000) return; // In Telemetry 10 giây / 1 lần (10000ms)
+
+    // 1. Gửi dữ liệu ROS2 tần suất cao (20Hz = 50ms/lần) cho Lidar/Odom/IMU
+    static unsigned long lastRos2SendMs = 0;
+    if (now - lastRos2SendMs >= 50) {
+        lastRos2SendMs = now;
+
+        // Gửi khoảng cách siêu âm (đơn vị: cm)
+        Serial.printf("RANGE %.1f %.1f\n", _data.frontDistance, _data.rearDistance);
+
+        // Gửi Encoder 4 bánh độc lập (đơn vị: mét)
+        float d_fl = EncoderManager::getInstance().getDistance(0);
+        float d_fr = EncoderManager::getInstance().getDistance(1);
+        float d_rl = EncoderManager::getInstance().getDistance(2);
+        float d_rr = EncoderManager::getInstance().getDistance(3);
+        Serial.printf("ENCODER %.4f %.4f %.4f %.4f\n", d_fl, d_fr, d_rl, d_rr);
+
+        // Chuyển đổi Roll, Pitch, Yaw (độ) sang Quaternion để gửi IMU qx qy qz qw
+        float r = _data.roll * 0.0174532925f;
+        float p = _data.pitch * 0.0174532925f;
+        float y = _data.yaw * 0.0174532925f;
+
+        float cy = cos(y * 0.5f);
+        float sy = sin(y * 0.5f);
+        float cp = cos(p * 0.5f);
+        float sp = sin(p * 0.5f);
+        float cr = cos(r * 0.5f);
+        float sr = sin(r * 0.5f);
+
+        float qw = cr * cp * cy + sr * sp * sy;
+        float qx = sr * cp * cy - cr * sp * sy;
+        float qy = cr * sp * cy + sr * cp * sy;
+        float qz = cr * cp * sy - sr * sp * cy;
+
+        Serial.printf("IMU %.4f %.4f %.4f %.4f\n", qx, qy, qz, qw);
+    }
+
+    // 2. Gửi dữ liệu Telemetry debug cũ (10 giây / 1 lần)
+    if (now - _lastSendMs < 10000) return;
     _lastSendMs = now;
 
     const char* modeStr = ModeManager::getInstance().getModeString();
