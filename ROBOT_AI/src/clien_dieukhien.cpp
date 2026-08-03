@@ -401,9 +401,17 @@ static void initCommandRegistry() {
 
 static std::string getNormalizedAction(const std::string& rawAction) {
     static std::unordered_map<std::string, std::string> aliasMap = {
-        {"w", "tien"}, {"s", "lui"}, {"a", "trai"}, {"d", "phai"},
-        {"q", "xoay_trai"}, {"e", "xoay_phai"}, {"x", "dung"},
-        {"z", "cheo_tt"}, {"c", "cheo_tp"},
+        {"w", "tien"}, {"forward", "tien"},
+        {"s", "lui"}, {"backward", "lui"},
+        {"a", "trai"}, {"left", "trai"}, {"strafe_left", "trai"},
+        {"d", "phai"}, {"right", "phai"}, {"strafe_right", "phai"},
+        {"q", "xoay_trai"}, {"rotate_left", "xoay_trai"},
+        {"e", "xoay_phai"}, {"rotate_right", "xoay_phai"},
+        {"x", "dung"}, {"stop", "dung"},
+        {"z", "cheo_tt"}, {"diagonal_front_left", "cheo_tt"},
+        {"c", "cheo_tp"}, {"diagonal_front_right", "cheo_tp"},
+        {"cheo_st", "cheo_st"}, {"diagonal_rear_left", "cheo_st"},
+        {"cheo_sp", "cheo_sp"}, {"diagonal_rear_right", "cheo_sp"},
         {"h", "help"},
         {"m", "mode_manual"}, {"man", "mode_manual"}, {"manual", "mode_manual"}, {"1", "mode_manual"},
         {"run", "mode_auto"}, {"auto", "mode_auto"}, {"2", "mode_auto"},
