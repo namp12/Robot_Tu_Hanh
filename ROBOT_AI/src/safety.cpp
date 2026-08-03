@@ -39,6 +39,14 @@ void SafetyMonitor::init() {
 
 void SafetyMonitor::feedWatchdog() {
     _lastCmdTime = millis();
+    if (_isEmergency && strcmp(_reason, "Low Battery Cutoff") != 0) {
+        _isEmergency = false;
+        _reason = "None";
+        _allowForward = true;
+        _allowBackward = true;
+        _allowStrafe = true;
+        _allowRotate = true;
+    }
 }
 
 void SafetyMonitor::emergencyStop(const char* reason) {
@@ -97,24 +105,21 @@ void SafetyMonitor::update() {
         return;
     }
 
-    // 2. Kiểm tra lỗi phần cứng IMU - chỉ cảnh báo, không cấm di chuyển ở MANUAL để test motor
+    // 2. Kiểm tra lỗi phần cứng IMU - cảnh báo nhưng không khóa ngắt phanh khẩn cấp để đảm bảo điều khiển bánh xe
     bool imuOnline = ImuModule::getInstance().isOnline();
     if (!imuOnline) {
-        if (ModeManager::getInstance().getMode() != MODE_MANUAL) {
-            emergencyStop("IMU Fault / Offline");
-            return;
-        }
         static unsigned long lastImuWarn = 0;
-        if (now - lastImuWarn > 2000) {
+        if (now - lastImuWarn > 3000) {
             lastImuWarn = now;
-            Serial.println(F("⚠️ [SafetyMonitor] IMU offline - cho phép di chuyển ở MANUAL để test"));
+            Serial.println(F("⚠️ [SafetyMonitor] IMU offline - Tiếp tục cho phép di chuyển"));
         }
     }
 
-    // 3. Serial Watchdog Timeout ở MODE_ROS (Ví dụ: > 500ms không nhận cmd_vel)
+    // 3. Serial Watchdog Timeout ở MODE_ROS: Dừng xe tạm thời khi ngắt lệnh, tự động di chuyển lại khi có cmd_vel mới
     if (ModeManager::getInstance().getMode() == MODE_ROS) {
         if (now - _lastCmdTime > params.cmdTimeoutMs) {
-            emergencyStop("ROS2 CmdVel Timeout (>500ms)");
+            car.stop();
+            moveControl.stop();
             return;
         }
     }
@@ -129,7 +134,16 @@ void SafetyMonitor::update() {
         return;
     }
 
-    // 4. Phân tích khoảng cách Cảm biến Siêu âm né vật cản theo vùng quy định:
+    // 4. Phân tích khoảng cách Cảm biến Siêu âm né vật cản theo vùng quy định
+    if (bypassSensorCheck || ModeManager::getInstance().getMode() == MODE_MANUAL) {
+        // Trong chế độ MANUAL thủ công hoặc khi bật bypass, cho phép di chuyển 100% không bị kẹt bởi cảm biến
+        _allowForward  = true;
+        _allowBackward = true;
+        _allowStrafe   = true;
+        _allowRotate   = true;
+        return;
+    }
+
     float frontDist = DistanceModule::getInstance().getFrontDistance();
     float rearDist = DistanceModule::getInstance().getRearDistance();
     float safeDist = params.safeDistanceCm;
