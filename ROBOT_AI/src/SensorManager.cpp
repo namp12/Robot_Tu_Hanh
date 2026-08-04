@@ -83,25 +83,30 @@ void SensorManager::sendData() {
 
         float qw = cr * cp * cy + sr * sp * sy;
         float qx = sr * cp * cy - cr * sp * sy;
-        float qy = cr * sp * cy + sr * sp * sy;
+        float qy = cr * sp * cy + sr * cp * sy;
         float qz = cr * cp * sy - sr * sp * cy;
 
         Serial.printf("IMU %.4f %.4f %.4f %.4f\n", qx, qy, qz, qw);
     }
 
-    // 2. Gửi dữ liệu Telemetry & Battery liên tục 500ms/lần (2Hz) cho Web Dashboard
-    if (now - _lastSendMs < 500) return;
+    // 2. Gửi dữ liệu Telemetry debug cũ (10 giây / 1 lần)
+    if (now - _lastSendMs < 10000) return;
     _lastSendMs = now;
-
-    // Gửi dòng BATTERY cho Web Dashboard nhận % Pin & Điện áp
-    Serial.printf("BATTERY %.1f %.2f\n", _data.batteryPercentage, _data.batteryVoltage);
 
     const char* modeStr = ModeManager::getInstance().getModeString();
     bool isEmergency = SafetyMonitor::getInstance().isEmergencyStop();
     const char* statusStr = isEmergency ? "EMERGENCY_STOP" : "READY";
 
-    // Xuất dữ liệu cảm biến thống nhất [TELEMETRY] liên tục
-    Serial.printf("[TELEMETRY] MODE:%s STATUS:%s VOL:%.2fV FRONT:%.1fcm REAR:%.1fcm Yaw:%.1f Dist:%.2fm\n",
-                  modeStr, statusStr, _data.batteryVoltage, _data.frontDistance, _data.rearDistance,
-                  _data.yaw, _data.totalDistance);
+    // Xuất dữ liệu cảm biến thống nhất lên Serial
+    Serial.printf("[TELEMETRY] MODE: %s | STATUS: %s | BATTERY: %.2fV (%d%%) | FRONT_DISTANCE: %.1fcm | REAR_DISTANCE: %.1fcm | IMU: Yaw=%.1f° Roll=%.1f° Pitch=%.1f° | ENCODER: Dist=%.2fm\n",
+                  modeStr,
+                  statusStr,
+                  _data.batteryVoltage,
+                  _data.batteryPercentage,
+                  _data.frontDistance,
+                  _data.rearDistance,
+                  _data.yaw,
+                  _data.roll,
+                  _data.pitch,
+                  _data.totalDistance);
 }
