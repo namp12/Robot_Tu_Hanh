@@ -436,7 +436,7 @@ void processCommand(String cmd) {
     int spaceIndex = cmd.indexOf(' ');
     String action = (spaceIndex == -1) ? cmd : cmd.substring(0, spaceIndex);
     int speed = (spaceIndex == -1)
-                    ? 150 
+                    ? 70 
                     : constrain(cmd.substring(spaceIndex + 1).toInt(), 0, 255);
 
     std::string actionStr = std::string(action.c_str());

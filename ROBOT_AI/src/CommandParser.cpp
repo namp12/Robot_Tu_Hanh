@@ -68,12 +68,12 @@ CommandPacket CommandParser::parse(const String& line) {
         moveArgs.trim();
 
         char dirBuf[32] = {0};
-        int speed = 150;
+        int speed = 70;
         int parsed = sscanf(moveArgs.c_str(), "%31s %d", dirBuf, &speed);
         if (parsed >= 1) {
             packet.moveDirection = String(dirBuf);
             packet.moveDirection.toUpperCase();
-            packet.moveSpeed = (parsed >= 2) ? speed : 150;
+            packet.moveSpeed = (parsed >= 2) ? speed : 70;
         }
         return packet;
     }
@@ -99,8 +99,8 @@ CommandPacket CommandParser::parse(const String& line) {
     lowerInput.toLowerCase();
     int spaceIndex = lowerInput.indexOf(' ');
     String firstWord = (spaceIndex == -1) ? lowerInput : lowerInput.substring(0, spaceIndex);
-    int argSpeed = (spaceIndex == -1) ? 150 : lowerInput.substring(spaceIndex + 1).toInt();
-    if (argSpeed <= 0) argSpeed = 150;
+    int argSpeed = (spaceIndex == -1) ? 70 : lowerInput.substring(spaceIndex + 1).toInt();
+    if (argSpeed <= 0) argSpeed = 70;
 
     if (firstWord == "tien" || firstWord == "w" ||
         firstWord == "lui" || firstWord == "s" ||

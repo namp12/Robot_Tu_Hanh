@@ -40,7 +40,15 @@ void MotionController::setManualCommand(const String& dir, int speed) {
     d.toUpperCase();
     d.trim();
 
-    float speedRatio = (speed > 0) ? ((float)speed / 255.0f) : 0.6f;
+    float speedRatio = 0.7f;
+    if (speed > 0) {
+        if (speed <= 100) {
+            speedRatio = (float)speed / 100.0f;
+        } else {
+            speedRatio = (float)speed / 255.0f;
+        }
+    }
+    speedRatio = constrain(speedRatio, 0.2f, 1.0f);
     const SystemParameters& p = ParameterManager::getInstance().getParams();
 
     if (d == "FORWARD" || d == "TIEN" || d == "W") {
