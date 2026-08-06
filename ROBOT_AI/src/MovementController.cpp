@@ -76,9 +76,11 @@ int MovementController::updatePwmRamp(int target) {
         _currentRampedSpeed = 0;
         return 0;
     }
-    // Khi nhận lệnh chạy, lập tức nhảy tới ngưỡng PWM tối thiểu 120 để thắng ma sát bánh xe ngay tức thì
-    if (_currentRampedSpeed < 120 && target >= 120) {
-        _currentRampedSpeed = 120;
+    // Khi nhận lệnh chạy, lập tức nhảy tới ngưỡng PWM tối thiểu thắng ma sát bánh xe ngay tức thì
+    const SystemParameters& p = ParameterManager::getInstance().getParams();
+    int minPwm = p.minPwmSpeed > 0 ? p.minPwmSpeed : 65;
+    if (_currentRampedSpeed < minPwm && target >= minPwm) {
+        _currentRampedSpeed = minPwm;
     }
     unsigned long now = millis();
     if (now - _lastRampTime >= AUTO_RAMP_INTERVAL_MS) {
